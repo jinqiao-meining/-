@@ -1,69 +1,44 @@
-# 公开资料站仓库
+# 经济学研究 Agent 门户
 
-这是一个适合放到 GitHub Pages 的公开站点仓库。
+这是一个部署在 GitHub Pages 上的经济学研究门户第一版。
 
-## 目录说明
+当前版本重点不是完整后端，而是先把教授端入口、研究流程框架、Agent 分工、项目规划器和学术诚信审阅模块部署上线，作为后续接入真实数据分析服务的前台门户。
 
-- `docs/`
-  GitHub Pages 站点目录
+## 当前能力
+
+- 经济学研究门户首页
+- 六大 Agent 分工展示
+- 引导式研究项目规划器
+- 学术诚信与 AI 痕迹风险审阅说明
+- 已归档公开资料展示
+
+## 目录结构
+
+- `docs/index.html`
+  门户首页
+- `docs/styles.css`
+  门户样式
+- `docs/app.js`
+  页面交互逻辑
 - `docs/content.json`
-  公开内容索引
+  归档内容索引
 - `docs/files/`
-  实际资料文件
+  已公开资料文件
 - `scripts/add-content.ps1`
-  手动添加新内容的脚本
+  手动加入新公开资料的脚本
 
-## 首次发布到 GitHub
+## 发布方式
 
-1. 在 GitHub 上创建一个新的公开仓库。
-2. 把当前 `public_site` 文件夹内容上传到仓库根目录。
-3. 打开 GitHub 仓库设置。
-4. 进入 `Settings > Pages`。
-5. 在 `Build and deployment` 中选择：
-   - Source: `Deploy from a branch`
-   - Branch: `main`
-   - Folder: `/docs`
-6. 保存后等待 GitHub Pages 发布完成。
+GitHub Pages 选择：
 
-发布后，公开链接通常会是：
+- Branch: `main`
+- Folder: `/docs`
 
-`https://你的用户名.github.io/你的仓库名/`
+## 下一步扩展方向
 
-## 后续手动上传新内容
-
-在仓库根目录运行：
-
-```powershell
-.\scripts\add-content.ps1 `
-  -Title "Python 第二章作业答案" `
-  -Category "Python" `
-  -SourceFile "C:\你的文件路径\chapter2.pdf" `
-  -HtmlFile "C:\你的文件路径\chapter2.html" `
-  -Summary "第二章题目答案与知识点整理"
-```
-
-如果只有 PDF，没有 HTML，也可以不传 `-HtmlFile`。
-
-然后执行：
-
-```powershell
-git add .
-git commit -m "add new content"
-git push
-```
-
-## 适合放进去的内容
-
-- 作业答案
-- 讲义
-- 报告
-- 学习笔记
-- PDF 资料
-- HTML 可视化页面
-
-## 后续可扩展
-
-- 自动把某个文件夹的新 PDF 扫描后加入站点
-- 自动生成封面图和摘要
-- 按课程分类、按日期筛选
-- 绑定自定义域名
+- 接入真实数据上传后端
+- 接入 Python / R 任务执行层
+- 接入数据库与项目日志系统
+- 接入真实 OpenAI Agent 编排
+- 接入 Quarto 报告生成
+- 接入相似性审阅和人工审稿工作流
