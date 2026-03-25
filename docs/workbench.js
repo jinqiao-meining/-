@@ -18,6 +18,7 @@ let currentAnalysisPayload = null;
 let currentRegressionChart = null;
 let currentRegressionPayload = null;
 let currentRegressionOptions = { winsorizeTail: "0", subgroupEnabled: "false" };
+let currentRegressionTable = null;
 
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
@@ -265,6 +266,27 @@ function renderSubgroupResult(regression) {
   `;
 }
 
+function renderRegressionTable(table) {
+  currentRegressionTable = table;
+  const root = document.getElementById("regression-table-result");
+  if (!table?.columns?.length || !table?.rows?.length) {
+    root.innerHTML = `<strong>回归对比表</strong><p style="margin:8px 0 0; color:var(--muted);">运行回归后，这里会展示适合整理进论文初稿的规格对比表。</p>`;
+    return;
+  }
+
+  const headers = table.columns.map(col => `<th>${col}</th>`).join("");
+  const body = table.rows.map(row => `
+    <tr>${table.columns.map(col => `<td>${row[col] ?? ""}</td>`).join("")}</tr>
+  `).join("");
+  root.innerHTML = `
+    <strong>回归对比表</strong>
+    <table class="analysis-table">
+      <thead><tr>${headers}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
+}
+
 function renderRegressionResult(payload) {
   currentRegressionPayload = payload;
   const root = document.getElementById("regression-result");
@@ -273,6 +295,7 @@ function renderRegressionResult(payload) {
     drawRegressionChart(null);
     renderRegressionInterpretation(null);
     renderSubgroupResult(null);
+    renderRegressionTable(null);
     return;
   }
 
@@ -282,6 +305,7 @@ function renderRegressionResult(payload) {
     drawRegressionChart(null);
     renderRegressionInterpretation(null);
     renderSubgroupResult(null);
+    renderRegressionTable(null);
     return;
   }
 
@@ -316,6 +340,7 @@ function renderRegressionResult(payload) {
   drawRegressionChart(regression.chartSuggestion || null);
   renderRegressionInterpretation(regression.interpretationDraft || []);
   renderSubgroupResult(regression);
+  renderRegressionTable(null);
 }
 
 function renderReportStatus(message, title = "研究备忘录") {
@@ -506,6 +531,7 @@ async function analyzeUpload(uploadId) {
   const data = await res.json();
   renderAnalysisResult(data);
   renderRegressionResult(null);
+  renderRegressionTable(null);
   renderReportStatus("请先运行回归或直接导出研究备忘录。");
 }
 
@@ -554,6 +580,8 @@ async function runRegression(uploadId) {
   const res = await fetch(`${apiBase}/api/uploads/${uploadId}/regression?${params.toString()}`);
   const data = await res.json();
   renderRegressionResult(data);
+  const tablePayload = await fetch(`${apiBase}/api/uploads/${uploadId}/regression-table?${params.toString()}`).then(r => r.json());
+  renderRegressionTable(tablePayload.table);
   renderReportStatus("已准备好导出研究备忘录。备忘录将整合项目设置、描述统计、回归结果与研究日志。");
 }
 
@@ -611,6 +639,41 @@ function bindReportButton() {
   });
 }
 
+function bindRegressionTableButton() {
+  document.getElementById("export-regression-table").addEventListener("click", async () => {
+    if (!backendAvailable) {
+      renderRegressionTable(null);
+      renderReportStatus("请先启动本地后端，再导出回归对比表。", "回归对比表");
+      return;
+    }
+    if (!currentUploads.length || !currentUploads[0]?.id) {
+      renderReportStatus("请先上传并分析一个数据文件。", "回归对比表");
+      return;
+    }
+
+    const options = readRegressionOptions();
+    const params = new URLSearchParams(options);
+    const data = await fetch(`${apiBase}/api/uploads/${currentUploads[0].id}/regression-table?${params.toString()}`).then(r => r.json());
+    renderRegressionTable(data.table);
+    if (!data.table?.rows?.length) {
+      renderReportStatus("当前尚未形成可导出的回归对比表，请先检查变量设定。", "回归对比表");
+      return;
+    }
+
+    const csvHeader = data.table.columns.join(",");
+    const csvRows = data.table.rows.map(row => data.table.columns.map(col => `"${String(row[col] ?? "").replace(/"/g, "\"\"")}"`).join(","));
+    const csv = [csvHeader, ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "regression_table_v9.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    renderReportStatus("回归对比表已导出，可直接作为论文回归表草稿继续整理。", "回归对比表");
+  });
+}
+
 window.analyzeUpload = analyzeUpload;
 
 async function init() {
@@ -623,9 +686,11 @@ async function init() {
   bindAnalysisButton();
   bindExportButton();
   bindRegressionButton();
+  bindRegressionTableButton();
   bindReportButton();
   renderReportStatus("导出后可获得一份 Markdown 格式的研究备忘录，便于继续整理为论文提纲。");
   renderSubgroupResult(null);
+  renderRegressionTable(null);
 }
 
 init();

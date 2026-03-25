@@ -7,7 +7,7 @@ const db = require("./db");
 const { methodPlaybooks, getAnalysisPlan } = require("./playbooks");
 const { reviewText } = require("./integrity");
 const { analyzeFile } = require("./analyze");
-const { runRegression } = require("./regression");
+const { runRegression, buildRegressionTable } = require("./regression");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -381,6 +381,34 @@ app.get("/api/uploads/:id/research-report", (req, res) => {
       title: `${project?.title || "经济学研究项目"} 研究备忘录`,
       markdown: reportLines.join("\n")
     }
+  });
+});
+
+app.get("/api/uploads/:id/regression-table", (req, res) => {
+  const uploadItem = getUploadStmt.get(req.params.id);
+  if (!uploadItem) {
+    return res.status(404).json({ error: "未找到对应文件。" });
+  }
+
+  const fullPath = path.join(uploadDir, uploadItem.stored_name);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: "文件已不存在。" });
+  }
+
+  const role = serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id));
+  const regression = runRegression(fullPath, role, {
+    winsorizeTail: req.query.winsorizeTail,
+    subgroupEnabled: req.query.subgroupEnabled
+  });
+  const table = buildRegressionTable(regression);
+
+  res.json({
+    file: {
+      id: uploadItem.id,
+      name: uploadItem.original_name
+    },
+    regression,
+    table
   });
 });
 

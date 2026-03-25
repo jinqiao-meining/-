@@ -369,6 +369,52 @@ function runRegression(filePath, roles = null, options = {}) {
   }
 }
 
+function buildRegressionTable(regression) {
+  if (!regression?.supported) {
+    return null;
+  }
+
+  const modelSpecs = regression.suiteResults?.length ? regression.suiteResults : [{
+    label: "基准规格",
+    sampleSize: regression.sampleSize,
+    rSquared: regression.rSquared,
+    adjustedRSquared: regression.adjustedRSquared,
+    coefficients: regression.coefficients
+  }];
+
+  const variables = Array.from(new Set(
+    modelSpecs.flatMap(spec => spec.coefficients.map(item => item.variable))
+  ));
+
+  const rows = [];
+  variables.forEach(variable => {
+    const coefficientRow = { variable, type: "coefficient" };
+    const stdErrorRow = { variable: `${variable}_se`, type: "stdError" };
+    modelSpecs.forEach(spec => {
+      const term = spec.coefficients.find(item => item.variable === variable);
+      coefficientRow[spec.label] = term ? `${term.coefficient}${term.stars || ""}` : "";
+      stdErrorRow[spec.label] = term ? `(${term.stdError})` : "";
+    });
+    rows.push(coefficientRow, stdErrorRow);
+  });
+
+  const sampleRow = { variable: "N", type: "stat" };
+  const r2Row = { variable: "R2", type: "stat" };
+  const adjR2Row = { variable: "Adj_R2", type: "stat" };
+  modelSpecs.forEach(spec => {
+    sampleRow[spec.label] = spec.sampleSize;
+    r2Row[spec.label] = spec.rSquared;
+    adjR2Row[spec.label] = spec.adjustedRSquared ?? "";
+  });
+  rows.push(sampleRow, r2Row, adjR2Row);
+
+  return {
+    columns: ["variable", ...modelSpecs.map(spec => spec.label)],
+    rows
+  };
+}
+
 module.exports = {
-  runRegression
+  runRegression,
+  buildRegressionTable
 };
