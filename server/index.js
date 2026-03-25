@@ -51,6 +51,16 @@ const insertLogStmt = db.prepare(`
   VALUES (@project_id, @content, @created_at)
 `);
 const listLogsStmt = db.prepare(`SELECT * FROM research_logs WHERE project_id = ? ORDER BY id DESC`);
+const getRoleStmt = db.prepare(`SELECT * FROM variable_roles WHERE project_id = ? AND upload_id = ?`);
+const upsertRoleInsertStmt = db.prepare(`
+  INSERT INTO variable_roles (project_id, upload_id, dependent_var, independent_vars, control_vars, group_var, time_var, updated_at)
+  VALUES (@project_id, @upload_id, @dependent_var, @independent_vars, @control_vars, @group_var, @time_var, @updated_at)
+`);
+const upsertRoleUpdateStmt = db.prepare(`
+  UPDATE variable_roles
+  SET dependent_var=@dependent_var, independent_vars=@independent_vars, control_vars=@control_vars, group_var=@group_var, time_var=@time_var, updated_at=@updated_at
+  WHERE id=@id
+`);
 
 function serializeProject(project) {
   if (!project) return null;
@@ -64,6 +74,21 @@ function serializeProject(project) {
     stage: project.stage,
     createdAt: project.created_at,
     updatedAt: project.updated_at
+  };
+}
+
+function serializeRole(role) {
+  if (!role) return null;
+  return {
+    id: role.id,
+    projectId: role.project_id,
+    uploadId: role.upload_id,
+    dependentVar: role.dependent_var,
+    independentVars: JSON.parse(role.independent_vars || "[]"),
+    controlVars: JSON.parse(role.control_vars || "[]"),
+    groupVar: role.group_var,
+    timeVar: role.time_var,
+    updatedAt: role.updated_at
   };
 }
 
@@ -179,14 +204,46 @@ app.get("/api/uploads/:id/analyze", (req, res) => {
     return res.status(404).json({ error: "文件已不存在。" });
   }
 
-  const analysis = analyzeFile(fullPath);
+  const role = serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id));
+  const analysis = analyzeFile(fullPath, role);
   res.json({
     file: {
       id: uploadItem.id,
       name: uploadItem.original_name,
       storedName: uploadItem.stored_name
     },
-    analysis
+    analysis,
+    roles: role
+  });
+});
+
+app.post("/api/uploads/:id/roles", (req, res) => {
+  const uploadItem = getUploadStmt.get(req.params.id);
+  if (!uploadItem) {
+    return res.status(404).json({ error: "未找到对应文件。" });
+  }
+
+  const now = new Date().toISOString();
+  const payload = {
+    project_id: uploadItem.project_id,
+    upload_id: uploadItem.id,
+    dependent_var: req.body.dependentVar || "",
+    independent_vars: JSON.stringify(req.body.independentVars || []),
+    control_vars: JSON.stringify(req.body.controlVars || []),
+    group_var: req.body.groupVar || "",
+    time_var: req.body.timeVar || "",
+    updated_at: now
+  };
+
+  const existing = getRoleStmt.get(uploadItem.project_id, uploadItem.id);
+  if (existing) {
+    upsertRoleUpdateStmt.run({ ...payload, id: existing.id });
+  } else {
+    upsertRoleInsertStmt.run(payload);
+  }
+
+  res.json({
+    roles: serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id))
   });
 });
 

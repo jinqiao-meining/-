@@ -38,6 +38,20 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS variable_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    upload_id INTEGER NOT NULL,
+    dependent_var TEXT DEFAULT '',
+    independent_vars TEXT DEFAULT '[]',
+    control_vars TEXT DEFAULT '[]',
+    group_var TEXT DEFAULT '',
+    time_var TEXT DEFAULT '',
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(upload_id) REFERENCES uploads(id) ON DELETE CASCADE
+  );
 `);
 
 module.exports = db;

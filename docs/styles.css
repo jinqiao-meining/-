@@ -585,6 +585,27 @@ h1 {
   text-align: left;
 }
 
+.role-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.role-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.role-form select {
+  width: 100%;
+  border: 1px solid #c7d5e3;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+  background: #fbfdff;
+}
+
 @media (max-width: 1080px) {
   .timeline,
   .agents-grid,

@@ -115,12 +115,21 @@
           <p>选择最近上传的 CSV/Excel 文件后，系统会自动识别字段、输出基础统计并给出图表建议。</p>
           <div class="panel-actions">
             <button class="button button--primary" id="analyze-latest" type="button">分析最近上传文件</button>
+            <button class="button button--secondary" id="export-descriptive" type="button">导出描述统计表</button>
+          </div>
+          <div class="integrity-output" id="variable-role-panel" style="margin-top:14px;">
+            <strong>变量角色设定</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">先完成一次文件分析，然后在这里选择因变量、自变量和控制变量。</p>
           </div>
           <div id="analysis-result" class="integrity-output">
             <strong>尚未生成分析摘要</strong>
             <p style="margin:8px 0 0; color:var(--muted);">支持 CSV、XLS、XLSX 文件。</p>
           </div>
           <canvas id="analysis-chart" height="180" style="margin-top:14px; width:100%; background:#fff; border-radius:16px; border:1px solid #d8e5f0;"></canvas>
+          <div id="interpretation-result" class="integrity-output">
+            <strong>结果解释草稿</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">分析完成后，这里会生成一份面向论文写作的解释草稿。</p>
+          </div>
         </article>
 
         <article class="workspace-panel">

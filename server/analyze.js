@@ -28,22 +28,31 @@ function toNumber(value) {
   return Number(String(value).replace(/,/g, "").trim());
 }
 
+function percentile(sortedValues, p) {
+  if (!sortedValues.length) return null;
+  const index = (sortedValues.length - 1) * p;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sortedValues[lower];
+  const weight = index - lower;
+  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+}
+
 function summarizeNumeric(values) {
   const clean = values.filter(isNumericValue).map(toNumber).sort((a, b) => a - b);
   if (!clean.length) return null;
   const sum = clean.reduce((acc, value) => acc + value, 0);
   const mean = sum / clean.length;
-  const median = clean[Math.floor(clean.length / 2)];
-  const min = clean[0];
-  const max = clean[clean.length - 1];
   const variance = clean.reduce((acc, value) => acc + (value - mean) ** 2, 0) / clean.length;
   return {
     count: clean.length,
     mean: Number(mean.toFixed(4)),
-    median: Number(median.toFixed(4)),
-    min: Number(min.toFixed(4)),
-    max: Number(max.toFixed(4)),
-    std: Number(Math.sqrt(variance).toFixed(4))
+    median: Number(percentile(clean, 0.5).toFixed(4)),
+    min: Number(clean[0].toFixed(4)),
+    max: Number(clean[clean.length - 1].toFixed(4)),
+    std: Number(Math.sqrt(variance).toFixed(4)),
+    p25: Number(percentile(clean, 0.25).toFixed(4)),
+    p75: Number(percentile(clean, 0.75).toFixed(4))
   };
 }
 
@@ -62,25 +71,15 @@ function summarizeCategorical(values) {
     .map(([label, count]) => ({ label, count }));
 }
 
-function profileRows(rows) {
-  if (!rows.length) {
-    return {
-      rowCount: 0,
-      columns: [],
-      numericSummaries: [],
-      categoricalSummaries: [],
-      chartSuggestions: []
-    };
-  }
-
-  const columns = Object.keys(rows[0]).map(name => {
+function detectColumns(rows) {
+  if (!rows.length) return [];
+  return Object.keys(rows[0]).map(name => {
     const values = rows.map(row => row[name]);
     const numericCount = values.filter(isNumericValue).length;
     const nonNullCount = values.filter(value => value !== null && value !== "" && value !== undefined).length;
     const uniqueCount = new Set(values.filter(value => value !== null && value !== "" && value !== undefined).map(value => String(value))).size;
     const ratio = nonNullCount ? numericCount / nonNullCount : 0;
     const inferredType = ratio > 0.8 ? "numeric" : uniqueCount <= 12 ? "categorical" : "text";
-
     return {
       name,
       inferredType,
@@ -89,10 +88,61 @@ function profileRows(rows) {
       uniqueCount
     };
   });
+}
 
+function buildDescriptiveTable(rows, selectedColumns) {
+  return selectedColumns.map(column => {
+    const stats = summarizeNumeric(rows.map(row => row[column]));
+    return {
+      variable: column,
+      ...stats
+    };
+  }).filter(item => item.count);
+}
+
+function buildInterpretation({ roles, descriptiveTable, chartSuggestions, rowCount }) {
+  const dep = roles?.dependentVar || "因变量";
+  const indep = (roles?.independentVars || []).join("、") || "核心解释变量";
+  const controls = (roles?.controlVars || []).join("、");
+  const lines = [
+    `当前样本共 ${rowCount} 行，平台已生成基础描述统计。`,
+    `建议将 ${dep} 作为核心结果变量，将 ${indep} 作为重点解释对象。`
+  ];
+
+  if (controls) {
+    lines.push(`控制变量初步可考虑纳入：${controls}。`);
+  }
+
+  if (descriptiveTable.length) {
+    const lead = descriptiveTable[0];
+    lines.push(`从描述统计看，${lead.variable} 的均值为 ${lead.mean}，标准差为 ${lead.std}，说明变量存在一定离散性。`);
+  }
+
+  if (chartSuggestions.length) {
+    lines.push(`建议优先查看“${chartSuggestions[0].title}”，用来判断样本结构和变量尺度是否合理。`);
+  }
+
+  lines.push("正式写作时，应结合变量定义、样本选择和识别策略，对这些统计结果进行经济学意义解释。");
+  return lines;
+}
+
+function profileRows(rows, roles = null) {
+  if (!rows.length) {
+    return {
+      rowCount: 0,
+      columns: [],
+      numericSummaries: [],
+      categoricalSummaries: [],
+      chartSuggestions: [],
+      descriptiveTable: [],
+      interpretationDraft: []
+    };
+  }
+
+  const columns = detectColumns(rows);
   const numericSummaries = columns
     .filter(column => column.inferredType === "numeric")
-    .slice(0, 6)
+    .slice(0, 8)
     .map(column => ({
       column: column.name,
       stats: summarizeNumeric(rows.map(row => row[column.name]))
@@ -111,9 +161,9 @@ function profileRows(rows) {
   if (numericSummaries.length) {
     chartSuggestions.push({
       type: "bar",
-      title: `数值变量均值比较：${numericSummaries.map(item => item.column).join(" / ")}`,
-      labels: numericSummaries.map(item => item.column),
-      values: numericSummaries.map(item => item.stats.mean)
+      title: `数值变量均值比较：${numericSummaries.slice(0, 5).map(item => item.column).join(" / ")}`,
+      labels: numericSummaries.slice(0, 5).map(item => item.column),
+      values: numericSummaries.slice(0, 5).map(item => item.stats.mean)
     });
   }
 
@@ -127,16 +177,38 @@ function profileRows(rows) {
     });
   }
 
+  let selectedColumns = numericSummaries.slice(0, 4).map(item => item.column);
+  if (roles) {
+    const roleColumns = [
+      roles.dependentVar,
+      ...(roles.independentVars || []),
+      ...(roles.controlVars || [])
+    ].filter(Boolean);
+    const numericRoleColumns = roleColumns.filter(col => columns.find(item => item.name === col && item.inferredType === "numeric"));
+    if (numericRoleColumns.length) {
+      selectedColumns = [...new Set(numericRoleColumns)];
+    }
+  }
+
+  const descriptiveTable = buildDescriptiveTable(rows, selectedColumns);
+
   return {
     rowCount: rows.length,
     columns,
     numericSummaries,
     categoricalSummaries,
-    chartSuggestions
+    chartSuggestions,
+    descriptiveTable,
+    interpretationDraft: buildInterpretation({
+      roles,
+      descriptiveTable,
+      chartSuggestions,
+      rowCount: rows.length
+    })
   };
 }
 
-function analyzeFile(filePath) {
+function analyzeFile(filePath, roles = null) {
   const ext = path.extname(filePath).toLowerCase();
   if (![".csv", ".xlsx", ".xls"].includes(ext)) {
     return {
@@ -149,7 +221,7 @@ function analyzeFile(filePath) {
   return {
     supported: true,
     sheetName: parsed.sheetName,
-    ...profileRows(parsed.rows)
+    ...profileRows(parsed.rows, roles)
   };
 }
 
