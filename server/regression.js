@@ -28,6 +28,16 @@ function toNumber(value) {
   return Number(String(value).replace(/,/g, "").trim());
 }
 
+function percentile(sortedValues, p) {
+  if (!sortedValues.length) return null;
+  const index = (sortedValues.length - 1) * p;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sortedValues[lower];
+  const weight = index - lower;
+  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+}
+
 function transpose(matrix) {
   return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
 }
@@ -113,12 +123,67 @@ function significanceStars(pValue) {
   return "";
 }
 
-function buildInterpretation({ dependentVar, regressors, coefficients, sampleSize, rSquared, suiteResults }) {
+function winsorizeRows(rows, columns, tailProbability) {
+  if (!tailProbability || tailProbability <= 0) {
+    return {
+      rows,
+      notes: ["未进行缩尾处理。"]
+    };
+  }
+
+  const thresholds = {};
+  columns.forEach(column => {
+    const values = rows
+      .map(row => row[column])
+      .filter(isNumericValue)
+      .map(toNumber)
+      .sort((a, b) => a - b);
+    if (!values.length) return;
+    thresholds[column] = {
+      lower: percentile(values, tailProbability),
+      upper: percentile(values, 1 - tailProbability)
+    };
+  });
+
+  const processedRows = rows.map(row => {
+    const nextRow = { ...row };
+    columns.forEach(column => {
+      if (!thresholds[column] || !isNumericValue(row[column])) return;
+      const numericValue = toNumber(row[column]);
+      nextRow[column] = Math.min(Math.max(numericValue, thresholds[column].lower), thresholds[column].upper);
+    });
+    return nextRow;
+  });
+
+  return {
+    rows: processedRows,
+    notes: [`已对 ${columns.join("、")} 执行双侧 ${tailProbability * 100}% 缩尾处理。`]
+  };
+}
+
+function pickTopGroups(rows, groupVar) {
+  const counts = new Map();
+  rows.forEach(row => {
+    const value = row[groupVar];
+    if (value === null || value === undefined || value === "") return;
+    const key = String(value);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([label]) => label);
+}
+
+function buildInterpretation({ dependentVar, regressors, coefficients, sampleSize, rSquared, suiteResults, preprocessingNotes, subgroupResults }) {
   const lines = [
     `本次基础回归共纳入 ${sampleSize} 个有效样本，因变量为 ${dependentVar}。`,
     `模型包含的解释变量为：${regressors.join("、")}。`,
     `当前模型的 R² 为 ${rSquared}，可用于初步判断样本内拟合程度。`
   ];
+
+  preprocessingNotes?.forEach(note => lines.push(note));
 
   const slopeTerms = coefficients.filter(item => item.variable !== "Intercept");
   if (slopeTerms.length) {
@@ -138,7 +203,15 @@ function buildInterpretation({ dependentVar, regressors, coefficients, sampleSiz
     }
   }
 
-  lines.push("该结果仍属于平台第七版中的基础 OLS 演示，正式研究建议继续补充稳健标准误、固定效应、内生性识别和更完整的稳健性检验。");
+  if (subgroupResults?.length) {
+    const firstSubgroup = subgroupResults[0];
+    const firstCoef = firstSubgroup.coefficients.find(item => item.variable === regressors[0]);
+    if (firstCoef) {
+      lines.push(`异质性比较中，${firstSubgroup.groupLabel} 组下 ${regressors[0]} 的系数约为 ${firstCoef.coefficient}，建议与其他组继续做机制解释。`);
+    }
+  }
+
+  lines.push("该结果仍属于平台第八版中的基础 OLS 演示，正式研究建议继续补充稳健标准误、固定效应、内生性识别、异质性机制和更完整的稳健性检验。");
   return lines;
 }
 
@@ -200,7 +273,7 @@ function runSpecification(rows, dependentVar, regressors, label) {
   }
 }
 
-function runRegression(filePath, roles = null) {
+function runRegression(filePath, roles = null, options = {}) {
   const ext = path.extname(filePath).toLowerCase();
   if (![".csv", ".xlsx", ".xls"].includes(ext)) {
     return {
@@ -228,10 +301,34 @@ function runRegression(filePath, roles = null) {
 
   const parsed = parseWorkbook(filePath);
   try {
-    const baseline = runSpecification(parsed.rows, roles.dependentVar, regressors, "基准规格");
+    const winsorizeTail = Number(options.winsorizeTail || 0);
+    const preprocessing = winsorizeRows(parsed.rows, [roles.dependentVar, ...regressors], winsorizeTail);
+    const workingRows = preprocessing.rows;
+    const preprocessingNotes = preprocessing.notes;
+
+    const baseline = runSpecification(workingRows, roles.dependentVar, regressors, "基准规格");
     const suiteResults = [baseline];
     if (coreRegressors.length && controlRegressors.length) {
-      suiteResults.push(runSpecification(parsed.rows, roles.dependentVar, coreRegressors, "不含控制变量"));
+      suiteResults.push(runSpecification(workingRows, roles.dependentVar, coreRegressors, "不含控制变量"));
+    }
+
+    const subgroupResults = [];
+    const subgroupEnabled = String(options.subgroupEnabled || "") === "true";
+    if (subgroupEnabled && roles.groupVar) {
+      const topGroups = pickTopGroups(workingRows, roles.groupVar);
+      topGroups.forEach(groupLabel => {
+        const subgroupRows = workingRows.filter(row => String(row[roles.groupVar]) === groupLabel);
+        try {
+          const result = runSpecification(subgroupRows, roles.dependentVar, regressors, `${roles.groupVar}=${groupLabel}`);
+          subgroupResults.push({
+            ...result,
+            groupVar: roles.groupVar,
+            groupLabel
+          });
+        } catch {
+          // Skip subgroups without enough observations.
+        }
+      });
     }
 
     return {
@@ -244,7 +341,9 @@ function runRegression(filePath, roles = null) {
       rSquared: baseline.rSquared,
       adjustedRSquared: baseline.adjustedRSquared,
       coefficients: baseline.coefficients,
+      preprocessingNotes,
       suiteResults,
+      subgroupResults,
       chartSuggestion: {
         type: "bar",
         title: "回归系数示意图",
@@ -257,7 +356,9 @@ function runRegression(filePath, roles = null) {
         coefficients: baseline.coefficients,
         sampleSize: baseline.sampleSize,
         rSquared: baseline.rSquared,
-        suiteResults
+        suiteResults,
+        preprocessingNotes,
+        subgroupResults
       })
     };
   } catch (error) {

@@ -13,7 +13,7 @@
         <p class="eyebrow eyebrow--dark">LOCAL-FIRST RESEARCH WORKBENCH</p>
         <h1 style="font-size:clamp(34px,5vw,62px); color:var(--ink);">经济学研究工作台</h1>
         <p style="margin:12px 0 0; color:var(--muted); max-width:760px;">
-          第七版已支持本地后端、描述统计、带推断信息的 OLS 原型、规格对照和研究备忘录导出。
+          第八版已支持描述统计、带推断信息的 OLS、样本缩尾、异质性分组和研究备忘录导出。
           若未启动后端，页面会自动回退到浏览器本地模式，保证研究记录不中断。
         </p>
         <div class="archive-meta" style="margin-top:12px;">
@@ -134,7 +134,25 @@
 
         <article class="workspace-panel">
           <h2>基础回归原型</h2>
-          <p>在完成变量角色设定后，可直接运行一次基础 OLS 原型，用于查看系数、标准误、t 值、p 值与规格对照。</p>
+          <p>在完成变量角色设定后，可直接运行一次基础 OLS 原型，并加入样本缩尾和异质性分组设置。</p>
+          <div class="integrity-output" id="regression-options" style="margin-bottom:14px;">
+            <strong>回归设定</strong>
+            <form class="role-form" id="regression-options-form">
+              <label>缩尾处理
+                <select name="winsorizeTail">
+                  <option value="0">不缩尾</option>
+                  <option value="0.01">双侧 1%</option>
+                  <option value="0.05">双侧 5%</option>
+                </select>
+              </label>
+              <label>异质性分组
+                <select name="subgroupEnabled">
+                  <option value="false">关闭</option>
+                  <option value="true">按分组变量比较</option>
+                </select>
+              </label>
+            </form>
+          </div>
           <div class="panel-actions">
             <button class="button button--primary" id="run-regression" type="button">运行基础回归</button>
             <button class="button button--secondary" id="export-report" type="button">导出研究备忘录</button>
@@ -147,6 +165,10 @@
           <div id="regression-interpretation" class="integrity-output">
             <strong>回归解释草稿</strong>
             <p style="margin:8px 0 0; color:var(--muted);">回归完成后，这里会生成一段适合继续打磨成论文文字的说明。</p>
+          </div>
+          <div id="subgroup-result" class="integrity-output">
+            <strong>异质性比较</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">如果已设置分组变量并启用分组比较，这里会展示各组的回归结果。</p>
           </div>
           <div id="report-status" class="integrity-output">
             <strong>研究备忘录</strong>

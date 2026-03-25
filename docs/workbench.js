@@ -17,6 +17,7 @@ let currentChart = null;
 let currentAnalysisPayload = null;
 let currentRegressionChart = null;
 let currentRegressionPayload = null;
+let currentRegressionOptions = { winsorizeTail: "0", subgroupEnabled: "false" };
 
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
@@ -234,6 +235,36 @@ function renderRegressionInterpretation(lines) {
   root.innerHTML = `<strong>回归解释草稿</strong><ul>${lines.map(item => `<li>${item}</li>`).join("")}</ul>`;
 }
 
+function readRegressionOptions() {
+  const form = document.getElementById("regression-options-form");
+  if (!form) return currentRegressionOptions;
+  const data = new FormData(form);
+  currentRegressionOptions = {
+    winsorizeTail: data.get("winsorizeTail") || "0",
+    subgroupEnabled: data.get("subgroupEnabled") || "false"
+  };
+  return currentRegressionOptions;
+}
+
+function renderSubgroupResult(regression) {
+  const root = document.getElementById("subgroup-result");
+  if (!regression?.subgroupResults?.length) {
+    root.innerHTML = `<strong>异质性比较</strong><p style="margin:8px 0 0; color:var(--muted);">如果已设置分组变量并启用分组比较，这里会展示各组的回归结果。</p>`;
+    return;
+  }
+
+  root.innerHTML = `
+    <strong>异质性比较</strong>
+    <table class="analysis-table">
+      <thead><tr><th>组别</th><th>N</th><th>R²</th><th>核心系数概览</th></tr></thead>
+      <tbody>${regression.subgroupResults.map(item => {
+        const slopes = item.coefficients.filter(coef => coef.variable !== "Intercept").slice(0, 2).map(coef => `${coef.variable}: ${coef.coefficient}`).join("；");
+        return `<tr><td>${item.groupVar}=${item.groupLabel}</td><td>${item.sampleSize}</td><td>${item.rSquared}</td><td>${slopes || "无"}</td></tr>`;
+      }).join("")}</tbody>
+    </table>
+  `;
+}
+
 function renderRegressionResult(payload) {
   currentRegressionPayload = payload;
   const root = document.getElementById("regression-result");
@@ -241,6 +272,7 @@ function renderRegressionResult(payload) {
     root.innerHTML = `<strong>尚未运行回归</strong><p style="margin:8px 0 0; color:var(--muted);">请先完成一次文件分析并设定变量角色。</p>`;
     drawRegressionChart(null);
     renderRegressionInterpretation(null);
+    renderSubgroupResult(null);
     return;
   }
 
@@ -249,6 +281,7 @@ function renderRegressionResult(payload) {
     root.innerHTML = `<strong>${file?.name || "回归结果"}</strong><p style="margin:8px 0 0; color:var(--muted);">${regression.message}</p>`;
     drawRegressionChart(null);
     renderRegressionInterpretation(null);
+    renderSubgroupResult(null);
     return;
   }
 
@@ -260,6 +293,7 @@ function renderRegressionResult(payload) {
         <p>因变量：${regression.dependentVar}</p>
         <p>解释变量：${regression.regressors.join("、")}</p>
         <p>样本量 N：${regression.sampleSize} | R²：${regression.rSquared} | Adjusted R²：${regression.adjustedRSquared ?? "NA"}</p>
+        <p>数据处理：${(regression.preprocessingNotes || ["未进行额外处理。"]).join("；")}</p>
       </div>
       <div class="analysis-card">
         <h4>系数结果</h4>
@@ -281,6 +315,7 @@ function renderRegressionResult(payload) {
 
   drawRegressionChart(regression.chartSuggestion || null);
   renderRegressionInterpretation(regression.interpretationDraft || []);
+  renderSubgroupResult(regression);
 }
 
 function renderReportStatus(message, title = "研究备忘录") {
@@ -514,7 +549,9 @@ async function runRegression(uploadId) {
     renderRegressionResult({ file: { name: "本地模式" }, regression: { supported: false, message: "请先启动本地后端，再使用基础回归功能。" } });
     return;
   }
-  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/regression`);
+  const options = readRegressionOptions();
+  const params = new URLSearchParams(options);
+  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/regression?${params.toString()}`);
   const data = await res.json();
   renderRegressionResult(data);
   renderReportStatus("已准备好导出研究备忘录。备忘录将整合项目设置、描述统计、回归结果与研究日志。");
@@ -540,7 +577,9 @@ async function exportResearchReport(uploadId) {
     renderReportStatus("请先启动本地后端，再导出研究备忘录。");
     return;
   }
-  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/research-report`);
+  const options = readRegressionOptions();
+  const params = new URLSearchParams(options);
+  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/research-report?${params.toString()}`);
   const data = await res.json();
   const markdown = data.report?.markdown;
   if (!markdown) {
@@ -551,7 +590,7 @@ async function exportResearchReport(uploadId) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "research_memo_v7.md";
+  a.download = "research_memo_v8.md";
   a.click();
   URL.revokeObjectURL(url);
   renderReportStatus("研究备忘录已导出，可继续整理为论文提纲或项目汇报。");
@@ -586,6 +625,7 @@ async function init() {
   bindRegressionButton();
   bindReportButton();
   renderReportStatus("导出后可获得一份 Markdown 格式的研究备忘录，便于继续整理为论文提纲。");
+  renderSubgroupResult(null);
 }
 
 init();

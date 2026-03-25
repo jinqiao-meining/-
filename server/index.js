@@ -260,7 +260,10 @@ app.get("/api/uploads/:id/regression", (req, res) => {
   }
 
   const role = serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id));
-  const regression = runRegression(fullPath, role);
+  const regression = runRegression(fullPath, role, {
+    winsorizeTail: req.query.winsorizeTail,
+    subgroupEnabled: req.query.subgroupEnabled
+  });
   res.json({
     file: {
       id: uploadItem.id,
@@ -286,7 +289,10 @@ app.get("/api/uploads/:id/research-report", (req, res) => {
   }
 
   const analysis = analyzeFile(fullPath, role);
-  const regression = runRegression(fullPath, role);
+  const regression = runRegression(fullPath, role, {
+    winsorizeTail: req.query.winsorizeTail,
+    subgroupEnabled: req.query.subgroupEnabled
+  });
   const logs = listLogsStmt.all(uploadItem.project_id).slice(0, 5).map(item => ({
     content: item.content,
     createdAt: item.created_at
@@ -324,6 +330,7 @@ app.get("/api/uploads/:id/research-report", (req, res) => {
     reportLines.push(`- 样本量 N：${regression.sampleSize}`);
     reportLines.push(`- R²：${regression.rSquared}`);
     reportLines.push(`- Adjusted R²：${regression.adjustedRSquared ?? "NA"}`);
+    (regression.preprocessingNotes || []).forEach(note => reportLines.push(`- 数据处理：${note}`));
     reportLines.push("");
     reportLines.push("| 变量 | 系数 | 标准误 | t 值 | p 值 |");
     reportLines.push("| --- | ---: | ---: | ---: | ---: |");
@@ -338,6 +345,13 @@ app.get("/api/uploads/:id/research-report", (req, res) => {
       reportLines.push("### 规格对照");
       regression.suiteResults.forEach(item => {
         reportLines.push(`- ${item.label}：N=${item.sampleSize}，R²=${item.rSquared}，Adjusted R²=${item.adjustedRSquared ?? "NA"}`);
+      });
+    }
+    if (regression.subgroupResults?.length) {
+      reportLines.push("");
+      reportLines.push("### 异质性比较");
+      regression.subgroupResults.forEach(item => {
+        reportLines.push(`- ${item.groupVar}=${item.groupLabel}：N=${item.sampleSize}，R²=${item.rSquared}`);
       });
     }
   } else {
