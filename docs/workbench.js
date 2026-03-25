@@ -1,60 +1,61 @@
 const projectKey = "economics-agent-workbench-project";
 const fileKey = "economics-agent-workbench-files";
 const logKey = "economics-agent-workbench-logs";
+const apiBase = window.location.origin.startsWith("http") ? window.location.origin : "http://localhost:3000";
 
 const methodTemplates = {
   did: {
     name: "DID / 事件研究",
     checklist: [
-      "明确定义处理组、对照组、政策年份",
-      "完成政策前趋势可比性检查",
-      "输出平行趋势图与事件研究图",
-      "补做安慰剂和伪时点检验"
+      "明确处理组、对照组、政策年份和识别时点。",
+      "完成政策前趋势可比性检查。",
+      "输出平行趋势图、事件研究图和基准 DID 表。",
+      "补做安慰剂、伪时点和样本替换稳健性。"
     ]
   },
   fe: {
     name: "固定效应回归",
     checklist: [
-      "明确个体与时间固定效应层级",
-      "确认聚类标准误口径",
-      "补做替代变量与样本修剪稳健性",
-      "检查组内变化是否支撑识别"
+      "明确个体固定效应、时间固定效应和聚类标准误层级。",
+      "检查核心解释变量的组内变化。",
+      "补做替代变量、样本修剪和不同规格比较。",
+      "输出基准回归与异质性结果。"
     ]
   },
   iv: {
     name: "工具变量",
     checklist: [
-      "说明工具变量的相关性来源",
-      "提供外生性论证",
-      "输出第一阶段与弱工具诊断",
-      "解释 LATE 含义与适用范围"
+      "给出工具变量相关性来源和外生性论证。",
+      "输出第一阶段、第二阶段和弱工具诊断。",
+      "解释局部平均处理效应的适用范围。",
+      "讨论排除限制的可信度。"
     ]
   },
   rdd: {
     name: "断点回归",
     checklist: [
-      "确认 cutoff 和 running variable",
-      "输出断点图与密度检验",
-      "比较不同带宽结果",
-      "比较多项式设定稳健性"
+      "确认 cutoff 和 running variable。",
+      "输出断点图、密度检验和带宽敏感性比较。",
+      "比较不同多项式设定。",
+      "检查断点附近操纵风险。"
     ]
   },
   forecast: {
     name: "预测 / 机器学习",
     checklist: [
-      "明确预测目标而非因果解释",
-      "划分训练、验证、测试集",
-      "选择性能指标",
-      "保留传统基准模型用于对比"
+      "明确预测目标而非因果识别目标。",
+      "划分训练集、验证集和测试集。",
+      "确定性能指标和特征解释方法。",
+      "保留传统计量模型作为对照。"
     ]
   }
 };
 
+let backendAvailable = false;
+
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
-  if (!value) {
-    return fallback;
-  }
+  if (!value) return fallback;
   try {
     return JSON.parse(value);
   } catch {
@@ -64,6 +65,14 @@ function readStore(key, fallback) {
 
 function writeStore(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function setBackendBadge() {
+  const badge = document.getElementById("backend-status");
+  if (!badge) return;
+  badge.textContent = backendAvailable ? "已连接本地后端" : "未检测到后端，当前为浏览器本地模式";
+  badge.style.background = backendAvailable ? "#e4f4eb" : "#fff7e6";
+  badge.style.color = backendAvailable ? "#1d6645" : "#7a5a11";
 }
 
 function renderProjectSummary(project) {
@@ -113,12 +122,13 @@ function renderFiles(files) {
   root.innerHTML = files.map(file => `
     <article class="data-item">
       <h4>${file.name}</h4>
-      <p>${file.note}</p>
+      <p>${file.note || "已登记数据文件。"}</p>
       <div class="data-meta">
-        <span>${file.size}</span>
-        <span>${file.type || "未知类型"}</span>
-        <span>${file.time}</span>
+        <span>${file.size || `${((file.sizeBytes || 0) / 1024).toFixed(1)} KB`}</span>
+        <span>${file.type || file.mimeType || "未知类型"}</span>
+        <span>${file.time || file.createdAt || ""}</span>
       </div>
+      ${file.url ? `<div class="panel-actions"><a class="button button--secondary" href="${file.url}" target="_blank" rel="noopener">打开文件</a></div>` : ""}
     </article>
   `).join("");
 }
@@ -147,57 +157,64 @@ function renderLogs(logs) {
 
   root.innerHTML = logs.map(log => `
     <article class="log-item">
-      <h4>${log.text}</h4>
+      <h4>${log.text || log.content}</h4>
       <div class="log-meta">
-        <span>${log.time}</span>
+        <span>${log.time || log.createdAt}</span>
       </div>
     </article>
   `).join("");
 }
 
-function integrityReview(text) {
-  const tips = [];
-  const raw = text.trim();
-
-  if (!raw) {
-    return ["请先输入需要审阅的段落。"];
-  }
-
-  if (raw.length < 120) {
-    tips.push("文本偏短，建议至少提供一个完整自然段再做审阅。");
-  }
-
-  const templateSignals = ["值得注意的是", "综上所述", "不难发现", "可以看出", "具有重要意义"];
-  const hitTemplate = templateSignals.filter(item => raw.includes(item));
-  if (hitTemplate.length) {
-    tips.push(`检测到较模板化表达：${hitTemplate.join("、")}。建议改为更具体的作者判断。`);
-  }
-
-  if (!/[0-9％%]/.test(raw)) {
-    tips.push("该段几乎没有数据、比例或系数信息，若属于结果解释段，建议补入具体证据。");
-  }
-
-  if (!/文献|研究|样本|变量|回归|估计|模型|机制/.test(raw)) {
-    tips.push("该段缺少学术研究语境关键词，可能显得过于空泛，建议补入变量、样本或方法口径。");
-  }
-
-  if (!/因为|由于|因此|表明|说明|意味着/.test(raw)) {
-    tips.push("逻辑连接词较少，建议补足因果链条或解释路径。");
-  }
-
-  tips.push("最终定稿前仍应人工核对引用来源、变量定义和论证是否与实证结果一致。");
-  return tips;
+function renderIntegrity(tips, title = "审阅提示") {
+  const output = document.getElementById("integrity-output");
+  output.innerHTML = `
+    <strong>${title}</strong>
+    <ul>${tips.map(item => `<li>${item}</li>`).join("")}</ul>
+  `;
 }
 
-function bindProjectForm() {
+async function checkBackend() {
+  try {
+    const res = await fetch(`${apiBase}/api/health`);
+    backendAvailable = res.ok;
+  } catch {
+    backendAvailable = false;
+  }
+  setBackendBadge();
+}
+
+async function loadInitialData() {
   const form = document.getElementById("project-form");
+  if (backendAvailable) {
+    try {
+      const res = await fetch(`${apiBase}/api/project`);
+      const data = await res.json();
+      if (data.project) {
+        Object.entries({
+          title: data.project.title,
+          question: data.project.question,
+          sample: data.project.sample,
+          dataShape: data.project.dataShape,
+          method: data.project.method,
+          stage: data.project.stage
+        }).forEach(([key, value]) => {
+          const input = form.elements.namedItem(key);
+          if (input) input.value = value;
+        });
+        renderProjectSummary(data.project);
+        renderFiles(data.uploads || []);
+        renderLogs(data.logs || []);
+        renderTemplates(data.project.method);
+        return;
+      }
+    } catch {}
+  }
+
   const saved = readStore(projectKey, null);
   if (saved) {
     Object.entries(saved).forEach(([key, value]) => {
       const input = form.elements.namedItem(key);
-      if (input) {
-        input.value = value;
-      }
+      if (input) input.value = value;
     });
     renderProjectSummary(saved);
     renderTemplates(saved.method);
@@ -205,10 +222,28 @@ function bindProjectForm() {
     renderProjectSummary(null);
     renderTemplates("did");
   }
+  renderFiles(readStore(fileKey, []));
+  renderLogs(readStore(logKey, []));
+}
 
-  form.addEventListener("submit", event => {
+function bindProjectForm() {
+  const form = document.getElementById("project-form");
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     const project = Object.fromEntries(new FormData(form).entries());
+
+    if (backendAvailable) {
+      const res = await fetch(`${apiBase}/api/project`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(project)
+      });
+      const data = await res.json();
+      renderProjectSummary(data.project);
+      renderTemplates(data.project.method);
+      return;
+    }
+
     writeStore(projectKey, project);
     renderProjectSummary(project);
     renderTemplates(project.method);
@@ -218,14 +253,25 @@ function bindProjectForm() {
 function bindFileRegister() {
   const button = document.getElementById("register-files");
   const input = document.getElementById("data-files");
-  const current = readStore(fileKey, []);
-  renderFiles(current);
 
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     const files = Array.from(input.files || []);
-    if (!files.length) {
+    if (!files.length) return;
+
+    if (backendAvailable) {
+      const formData = new FormData();
+      files.forEach(file => formData.append("files", file));
+      const res = await fetch(`${apiBase}/api/upload`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      const current = await fetch(`${apiBase}/api/project`).then(r => r.json());
+      renderFiles(current.uploads || data.files || []);
+      input.value = "";
       return;
     }
+
     const existing = readStore(fileKey, []);
     const next = [
       ...files.map(file => ({
@@ -245,19 +291,26 @@ function bindFileRegister() {
 
 function bindLogs() {
   const form = document.getElementById("log-form");
-  renderLogs(readStore(logKey, []));
 
-  form.addEventListener("submit", event => {
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     const text = form.elements.namedItem("logText").value.trim();
-    if (!text) {
+    if (!text) return;
+
+    if (backendAvailable) {
+      await fetch(`${apiBase}/api/logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text })
+      });
+      const current = await fetch(`${apiBase}/api/project`).then(r => r.json());
+      renderLogs(current.logs || []);
+      form.reset();
       return;
     }
+
     const next = [
-      {
-        text,
-        time: new Date().toLocaleString("zh-CN")
-      },
+      { text, time: new Date().toLocaleString("zh-CN") },
       ...readStore(logKey, [])
     ];
     writeStore(logKey, next);
@@ -268,20 +321,34 @@ function bindLogs() {
 
 function bindIntegrity() {
   const form = document.getElementById("integrity-form");
-  const output = document.getElementById("integrity-output");
 
-  form.addEventListener("submit", event => {
+  form.addEventListener("submit", async event => {
     event.preventDefault();
     const text = document.getElementById("integrity-text").value;
-    const tips = integrityReview(text);
-    output.innerHTML = `
-      <strong>审阅提示</strong>
-      <ul>${tips.map(item => `<li>${item}</li>`).join("")}</ul>
-    `;
+
+    if (backendAvailable) {
+      const res = await fetch(`${apiBase}/api/integrity-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      renderIntegrity(data.tips || []);
+      return;
+    }
+
+    const tips = ["当前未连接后端，建议启动本地服务以获得统一审阅结果。", "在未接后端模式下，平台仅保存浏览器本地数据。", "最终定稿前仍应人工核对引用来源、变量定义和论证是否一致。"];
+    renderIntegrity(tips, "本地模式提示");
   });
 }
 
-bindProjectForm();
-bindFileRegister();
-bindLogs();
-bindIntegrity();
+async function init() {
+  await checkBackend();
+  await loadInitialData();
+  bindProjectForm();
+  bindFileRegister();
+  bindLogs();
+  bindIntegrity();
+}
+
+init();

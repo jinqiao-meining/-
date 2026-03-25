@@ -1,0 +1,31 @@
+{
+  "name": "public_site",
+  "version": "1.0.0",
+  "description": "经济学研究 Agent 门户与本地后端原型。",
+  "main": "server/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "node server/index.js",
+    "test": "echo \"No automated tests yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jinqiao-meining/-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jinqiao-meining/-/issues"
+  },
+  "homepage": "https://github.com/jinqiao-meining/-#readme",
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "multer": "^2.1.1"
+  }
+}
