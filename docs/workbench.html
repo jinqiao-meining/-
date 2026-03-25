@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>经济学研究工作台</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell workspace-hero">
+    <div class="workspace-hero__bar">
+      <div>
+        <p class="eyebrow eyebrow--dark">LOCAL-FIRST RESEARCH WORKBENCH</p>
+        <h1 style="font-size:clamp(34px,5vw,62px); color:var(--ink);">经济学研究工作台</h1>
+        <p style="margin:12px 0 0; color:var(--muted); max-width:760px;">
+          第二版支持项目保存、数据登记、分析模板、研究日志与诚信审阅。当前数据保存在浏览器本地，适合作为教授端前台原型。
+        </p>
+      </div>
+      <div class="panel-actions">
+        <a class="button button--primary" href="./index.html">返回门户</a>
+      </div>
+    </div>
+
+    <div class="workspace-grid">
+      <section class="workspace-stack">
+        <article class="workspace-panel">
+          <h2>项目设置</h2>
+          <form class="workspace-form" id="project-form">
+            <label>
+              项目题目
+              <input type="text" name="title" placeholder="例如：数字金融对企业投资效率的影响" required />
+            </label>
+            <label>
+              研究问题
+              <textarea name="question" rows="4" placeholder="请输入研究问题、理论机制和核心变量。"></textarea>
+            </label>
+            <label>
+              样本范围
+              <input type="text" name="sample" placeholder="例如：2011-2024 年 A 股上市公司" />
+            </label>
+            <label>
+              数据结构
+              <select name="dataShape">
+                <option value="panel">面板数据</option>
+                <option value="cross">截面数据</option>
+                <option value="timeseries">时间序列</option>
+                <option value="mixed">多源混合数据</option>
+              </select>
+            </label>
+            <label>
+              主要方法
+              <select name="method">
+                <option value="did">DID / 事件研究</option>
+                <option value="fe">固定效应回归</option>
+                <option value="iv">工具变量</option>
+                <option value="rdd">断点回归</option>
+                <option value="forecast">预测 / 机器学习</option>
+              </select>
+            </label>
+            <label>
+              当前阶段
+              <select name="stage">
+                <option value="design">研究设计</option>
+                <option value="cleaning">数据清洗</option>
+                <option value="analysis">计量分析</option>
+                <option value="writing">写作审阅</option>
+              </select>
+            </label>
+            <button class="button button--primary button--wide" type="submit">保存项目</button>
+          </form>
+        </article>
+
+        <article class="workspace-panel">
+          <h2>数据收件箱</h2>
+          <p>这里登记数据文件、用途和上传时间。当前版本不上传到服务器，只在本地浏览器保存记录。</p>
+          <div class="data-actions">
+            <input type="file" id="data-files" multiple />
+            <button class="button button--primary" id="register-files" type="button">登记文件</button>
+          </div>
+          <div class="data-list" id="data-list"></div>
+        </article>
+
+        <article class="workspace-panel">
+          <h2>研究日志</h2>
+          <p>建议每次做出样本处理、变量替换、模型变更时都留下记录。</p>
+          <form class="log-form" id="log-form">
+            <label>
+              日志内容
+              <textarea name="logText" rows="4" placeholder="例如：剔除 ST 企业后，核心系数仍显著；下一步补做并行趋势检验。"></textarea>
+            </label>
+            <button class="button button--primary" type="submit">添加日志</button>
+          </form>
+          <div class="log-list" id="log-list"></div>
+        </article>
+      </section>
+
+      <section class="workspace-stack">
+        <article class="workspace-panel">
+          <h2>项目总览</h2>
+          <div class="project-summary" id="project-summary"></div>
+        </article>
+
+        <article class="workspace-panel">
+          <h2>分析模板</h2>
+          <p>根据您选择的方法，生成第一轮标准化分析检查清单。</p>
+          <div class="template-grid" id="template-grid"></div>
+        </article>
+
+        <article class="workspace-panel">
+          <h2>诚信审阅工作单</h2>
+          <p>输入一段论文草稿，系统将从“模板化表述、引用不足、证据不足、作者判断不足”四个方向做提示。</p>
+          <form class="integrity-form" id="integrity-form">
+            <label>
+              待审阅文本
+              <textarea id="integrity-text" rows="7" placeholder="请粘贴论文草稿中的一段文字。"></textarea>
+            </label>
+            <button class="button button--primary" type="submit">生成审阅提示</button>
+          </form>
+          <div class="integrity-output" id="integrity-output">
+            <strong>尚未生成审阅结果</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">该模块只做合规审阅，不提供规避检测器的技巧。</p>
+          </div>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="./workbench.js"></script>
+</body>
+</html>
