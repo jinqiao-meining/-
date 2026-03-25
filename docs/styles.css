@@ -554,6 +554,37 @@ h1 {
   color: var(--muted);
 }
 
+.analysis-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.analysis-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #d8e5f0;
+}
+
+.analysis-card h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e3ecf4;
+  text-align: left;
+}
+
 @media (max-width: 1080px) {
   .timeline,
   .agents-grid,

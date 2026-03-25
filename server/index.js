@@ -6,6 +6,7 @@ const multer = require("multer");
 const db = require("./db");
 const { methodPlaybooks, getAnalysisPlan } = require("./playbooks");
 const { reviewText } = require("./integrity");
+const { analyzeFile } = require("./analyze");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -44,6 +45,7 @@ const insertUpload = db.prepare(`
   VALUES (@project_id, @original_name, @stored_name, @mime_type, @size_bytes, @note, @created_at)
 `);
 const listUploadsStmt = db.prepare(`SELECT * FROM uploads WHERE project_id = ? ORDER BY id DESC`);
+const getUploadStmt = db.prepare(`SELECT * FROM uploads WHERE id = ?`);
 const insertLogStmt = db.prepare(`
   INSERT INTO research_logs (project_id, content, created_at)
   VALUES (@project_id, @content, @created_at)
@@ -142,7 +144,7 @@ app.post("/api/upload", upload.array("files"), (req, res) => {
   const now = new Date().toISOString();
   const note = req.body.note || "已登记到项目数据收件箱。";
   const files = (req.files || []).map(file => {
-    insertUpload.run({
+    const result = insertUpload.run({
       project_id: current.id,
       original_name: file.originalname,
       stored_name: file.filename,
@@ -152,6 +154,7 @@ app.post("/api/upload", upload.array("files"), (req, res) => {
       created_at: now
     });
     return {
+      id: result.lastInsertRowid,
       name: file.originalname,
       storedName: file.filename,
       mimeType: file.mimetype,
@@ -163,6 +166,28 @@ app.post("/api/upload", upload.array("files"), (req, res) => {
   });
 
   res.json({ files });
+});
+
+app.get("/api/uploads/:id/analyze", (req, res) => {
+  const uploadItem = getUploadStmt.get(req.params.id);
+  if (!uploadItem) {
+    return res.status(404).json({ error: "未找到对应文件。" });
+  }
+
+  const fullPath = path.join(uploadDir, uploadItem.stored_name);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: "文件已不存在。" });
+  }
+
+  const analysis = analyzeFile(fullPath);
+  res.json({
+    file: {
+      id: uploadItem.id,
+      name: uploadItem.original_name,
+      storedName: uploadItem.stored_name
+    },
+    analysis
+  });
 });
 
 app.post("/api/logs", (req, res) => {

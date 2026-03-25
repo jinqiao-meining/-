@@ -111,6 +111,19 @@
         </article>
 
         <article class="workspace-panel">
+          <h2>数据分析摘要</h2>
+          <p>选择最近上传的 CSV/Excel 文件后，系统会自动识别字段、输出基础统计并给出图表建议。</p>
+          <div class="panel-actions">
+            <button class="button button--primary" id="analyze-latest" type="button">分析最近上传文件</button>
+          </div>
+          <div id="analysis-result" class="integrity-output">
+            <strong>尚未生成分析摘要</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">支持 CSV、XLS、XLSX 文件。</p>
+          </div>
+          <canvas id="analysis-chart" height="180" style="margin-top:14px; width:100%; background:#fff; border-radius:16px; border:1px solid #d8e5f0;"></canvas>
+        </article>
+
+        <article class="workspace-panel">
           <h2>诚信审阅工作单</h2>
           <p>输入一段论文草稿，系统将从“模板化表述、引用不足、证据不足、作者判断不足”四个方向做提示。</p>
           <form class="integrity-form" id="integrity-form">
@@ -129,6 +142,7 @@
     </div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="./workbench.js"></script>
 </body>
 </html>

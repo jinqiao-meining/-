@@ -52,6 +52,8 @@ const methodTemplates = {
 };
 
 let backendAvailable = false;
+let currentUploads = [];
+let currentChart = null;
 
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
@@ -108,6 +110,7 @@ function renderProjectSummary(project) {
 }
 
 function renderFiles(files) {
+  currentUploads = files;
   const root = document.getElementById("data-list");
   if (!files.length) {
     root.innerHTML = `
@@ -128,7 +131,10 @@ function renderFiles(files) {
         <span>${file.type || file.mimeType || "未知类型"}</span>
         <span>${file.time || file.createdAt || ""}</span>
       </div>
-      ${file.url ? `<div class="panel-actions"><a class="button button--secondary" href="${file.url}" target="_blank" rel="noopener">打开文件</a></div>` : ""}
+      <div class="panel-actions">
+        ${file.url ? `<a class="button button--secondary" href="${file.url}" target="_blank" rel="noopener">打开文件</a>` : ""}
+        ${file.id ? `<button class="button button--primary" type="button" onclick="analyzeUpload(${file.id})">分析此文件</button>` : ""}
+      </div>
     </article>
   `).join("");
 }
@@ -171,6 +177,117 @@ function renderIntegrity(tips, title = "审阅提示") {
     <strong>${title}</strong>
     <ul>${tips.map(item => `<li>${item}</li>`).join("")}</ul>
   `;
+}
+
+function renderAnalysisResult(payload) {
+  const root = document.getElementById("analysis-result");
+  if (!payload || !payload.analysis) {
+    root.innerHTML = `<strong>暂无分析结果</strong>`;
+    return;
+  }
+
+  const { file, analysis } = payload;
+  if (!analysis.supported) {
+    root.innerHTML = `
+      <strong>${file.name}</strong>
+      <p style="margin:8px 0 0; color:var(--muted);">${analysis.message}</p>
+    `;
+    drawChart(null);
+    return;
+  }
+
+  root.innerHTML = `
+    <strong>${file.name}</strong>
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <h4>数据概况</h4>
+        <p>工作表：${analysis.sheetName} | 样本行数：${analysis.rowCount} | 字段数：${analysis.columns.length}</p>
+      </div>
+      <div class="analysis-card">
+        <h4>字段识别</h4>
+        <table class="analysis-table">
+          <thead><tr><th>字段</th><th>类型</th><th>缺失</th><th>唯一值</th></tr></thead>
+          <tbody>
+            ${analysis.columns.slice(0, 8).map(col => `
+              <tr>
+                <td>${col.name}</td>
+                <td>${col.inferredType}</td>
+                <td>${col.missingCount}</td>
+                <td>${col.uniqueCount}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="analysis-card">
+        <h4>数值变量摘要</h4>
+        ${analysis.numericSummaries.length ? `
+          <table class="analysis-table">
+            <thead><tr><th>变量</th><th>均值</th><th>标准差</th><th>最小值</th><th>最大值</th></tr></thead>
+            <tbody>
+              ${analysis.numericSummaries.map(item => `
+                <tr>
+                  <td>${item.column}</td>
+                  <td>${item.stats.mean}</td>
+                  <td>${item.stats.std}</td>
+                  <td>${item.stats.min}</td>
+                  <td>${item.stats.max}</td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        ` : `<p style="color:var(--muted);">未识别到可用于描述统计的数值变量。</p>`}
+      </div>
+      <div class="analysis-card">
+        <h4>分类变量摘要</h4>
+        ${analysis.categoricalSummaries.length ? analysis.categoricalSummaries.map(item => `
+          <p><strong>${item.column}</strong>：${item.topValues.map(v => `${v.label}(${v.count})`).join("，")}</p>
+        `).join("") : `<p style="color:var(--muted);">未识别到低类别数的分类变量。</p>`}
+      </div>
+    </div>
+  `;
+
+  drawChart(analysis.chartSuggestions?.[0] || null);
+}
+
+function drawChart(chartSuggestion) {
+  const canvas = document.getElementById("analysis-chart");
+  if (!canvas || !window.Chart) return;
+  const ctx = canvas.getContext("2d");
+  if (currentChart) currentChart.destroy();
+
+  if (!chartSuggestion) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  currentChart = new Chart(ctx, {
+    type: chartSuggestion.type || "bar",
+    data: {
+      labels: chartSuggestion.labels,
+      datasets: [{
+        label: chartSuggestion.title,
+        data: chartSuggestion.values,
+        backgroundColor: "#2d72ff",
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: chartSuggestion.title,
+          color: "#14263b",
+          font: { size: 16 }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "#55677a" } },
+        y: { ticks: { color: "#55677a" } }
+      }
+    }
+  });
 }
 
 async function checkBackend() {
@@ -342,6 +459,44 @@ function bindIntegrity() {
   });
 }
 
+async function analyzeUpload(uploadId) {
+  if (!backendAvailable) {
+    renderAnalysisResult({
+      file: { name: "本地模式" },
+      analysis: { supported: false, message: "请先启动本地后端，再使用自动分析功能。" }
+    });
+    return;
+  }
+
+  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/analyze`);
+  const data = await res.json();
+  renderAnalysisResult(data);
+}
+
+function bindAnalysisButton() {
+  const button = document.getElementById("analyze-latest");
+  button.addEventListener("click", async () => {
+    if (!currentUploads.length) {
+      renderAnalysisResult({
+        file: { name: "暂无文件" },
+        analysis: { supported: false, message: "请先上传或登记一个 CSV/Excel 文件。" }
+      });
+      return;
+    }
+    const latest = currentUploads[0];
+    if (!latest.id) {
+      renderAnalysisResult({
+        file: { name: latest.name || "本地文件" },
+        analysis: { supported: false, message: "浏览器本地模式下暂不支持自动读表，请启动本地后端。" }
+      });
+      return;
+    }
+    await analyzeUpload(latest.id);
+  });
+}
+
+window.analyzeUpload = analyzeUpload;
+
 async function init() {
   await checkBackend();
   await loadInitialData();
@@ -349,6 +504,7 @@ async function init() {
   bindFileRegister();
   bindLogs();
   bindIntegrity();
+  bindAnalysisButton();
 }
 
 init();
