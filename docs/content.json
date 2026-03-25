@@ -1,0 +1,11 @@
+[
+  {
+    "id": "python-chapter-1",
+    "title": "Python 第一章作业答案与知识补充",
+    "date": "2026-03-25",
+    "category": "Python",
+    "summary": "包含 33 道题的标准答案、逐题解析和本章核心知识点，适合作为公开复习资料。",
+    "pdf": "./files/python-chapter-1/python_chapter1_homework_answers.pdf",
+    "html": "./files/python-chapter-1/python_chapter1_homework_answers.html"
+  }
+]

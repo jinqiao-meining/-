@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>桥桥公开资料站</title>
+  <style>
+    :root {
+      --bg: #f4f8fc;
+      --paper: rgba(255,255,255,0.92);
+      --ink: #14263b;
+      --muted: #5e7185;
+      --line: rgba(20, 38, 59, 0.09);
+      --blue: #2d72ff;
+      --cyan: #8dd6ff;
+      --mint: #dff5ea;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(141,214,255,0.42), transparent 34%),
+        radial-gradient(circle at top right, rgba(45,114,255,0.22), transparent 30%),
+        linear-gradient(180deg, #f7fbff 0%, #eef5fb 100%);
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 48px;
+    }
+
+    .hero {
+      min-height: 58vh;
+      display: grid;
+      align-items: end;
+      padding: 28px 0 18px;
+    }
+
+    .hero-panel {
+      border-radius: 28px;
+      padding: 34px;
+      background:
+        linear-gradient(135deg, rgba(18,48,92,0.92), rgba(45,114,255,0.88)),
+        linear-gradient(180deg, #112946, #2d72ff);
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(26, 54, 94, 0.18);
+    }
+
+    .hero-panel::after {
+      content: "";
+      position: absolute;
+      right: -60px;
+      top: -40px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.26), rgba(255,255,255,0));
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: rgba(255,255,255,0.74);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 9em;
+      font-size: clamp(38px, 7vw, 82px);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-copy {
+      margin: 18px 0 0;
+      max-width: 520px;
+      font-size: 15px;
+      color: rgba(255,255,255,0.88);
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 13px;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 10px 28px rgba(20, 38, 59, 0.05);
+      backdrop-filter: blur(10px);
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .steps {
+      margin: 12px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .library {
+      margin-top: 18px;
+    }
+
+    .library-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .library-head h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .library-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .entry {
+      padding: 22px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,250,255,0.92));
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 24px rgba(20, 38, 59, 0.05);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .entry:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(20, 38, 59, 0.10);
+    }
+
+    .entry-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .entry h3 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .meta {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tag {
+      background: var(--mint);
+      color: #1f5a47;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+
+    .summary {
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 118px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      opacity: 0.92;
+    }
+
+    .button.primary {
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .button.secondary {
+      color: var(--ink);
+      background: #edf4ff;
+    }
+
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 820px) {
+      .intro {
+        grid-template-columns: 1fr;
+      }
+
+      .entry-top {
+        flex-direction: column;
+      }
+
+      .hero-panel {
+        padding: 26px 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-panel">
+        <p class="eyebrow">PUBLIC ARCHIVE</p>
+        <h1>桥桥公开资料站</h1>
+        <p class="hero-copy">以后你的作业答案、讲义、报告、PDF 和网页版内容，都可以统一收进这里。公开仓库一更新，任何人都能直接访问。</p>
+        <div class="hero-meta">
+          <span class="pill">公开可访问</span>
+          <span class="pill">适合 GitHub Pages</span>
+          <span class="pill">支持手动上传</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="intro">
+      <div class="panel">
+        <h2>这个仓库怎么用</h2>
+        <p>这是一个静态站点仓库。你把内容文件放进仓库并推送到公开 GitHub 仓库后，站点会自动更新。默认最省钱、最稳定的方案就是 GitHub Pages。</p>
+      </div>
+      <div class="panel">
+        <h2>后续发布流程</h2>
+        <ol class="steps">
+          <li>准备新 PDF、HTML 或资料文件。</li>
+          <li>运行上传脚本，把文件加入站点目录。</li>
+          <li>提交并推送到 GitHub。</li>
+          <li>公开链接自动更新，所有人都能访问。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="library">
+      <div class="library-head">
+        <div>
+          <h2>公开内容</h2>
+          <p>当前已收录的资料会显示在这里。</p>
+        </div>
+      </div>
+      <div class="list" id="content-list"></div>
+    </section>
+
+    <p class="footer">Built for simple public publishing. Add files, push once, share anywhere.</p>
+  </main>
+
+  <script>
+    async function loadContent() {
+      const res = await fetch('./content.json');
+      const items = await res.json();
+      const list = document.getElementById('content-list');
+
+      list.innerHTML = items.map(item => `
+        <article class="entry">
+          <div class="entry-top">
+            <div>
+              <h3>${item.title}</h3>
+              <div class="meta">
+                <span class="tag">${item.category}</span>
+                <span>${item.date}</span>
+              </div>
+            </div>
+          </div>
+          <p class="summary">${item.summary}</p>
+          <div class="actions">
+            ${item.pdf ? `<a class="button primary" href="${item.pdf}" target="_blank" rel="noopener">打开 PDF</a>` : ''}
+            ${item.html ? `<a class="button secondary" href="${item.html}" target="_blank" rel="noopener">网页查看</a>` : ''}
+          </div>
+        </article>
+      `).join('');
+    }
+
+    loadContent().catch(() => {
+      document.getElementById('content-list').innerHTML = `
+        <article class="entry">
+          <h3>内容加载失败</h3>
+          <p class="summary">请确认 <code>content.json</code> 是否存在，或稍后再试。</p>
+        </article>
+      `;
+    });
+  </script>
+</body>
+</html>

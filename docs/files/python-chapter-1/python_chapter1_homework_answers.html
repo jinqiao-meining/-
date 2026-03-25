@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Python 第一章作业答案与知识补充</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+
+    :root {
+      --ink: #17304a;
+      --sub: #4f6476;
+      --blue: #2b6ff2;
+      --sky: #eaf3ff;
+      --mint: #e8f7f0;
+      --gold: #fff4d6;
+      --paper: #f7fbff;
+      --line: #d8e6f3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, #dcecff 0, #f7fbff 38%, #ffffff 100%);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .cover {
+      padding: 22px 22px 18px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #2063e8, #4ca7ff);
+      color: #fff;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(43, 111, 242, 0.18);
+    }
+
+    .cover h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .cover p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: 0 6px 18px rgba(23, 48, 74, 0.05);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      color: #173766;
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px 18px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .tip {
+      padding: 8px 10px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+    }
+
+    .tip.blue { background: var(--sky); }
+    .tip.green { background: var(--mint); }
+    .tip.gold { background: var(--gold); }
+
+    .section {
+      background: rgba(255,255,255,0.94);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 18px rgba(23, 48, 74, 0.05);
+      break-inside: avoid;
+    }
+
+    .section h3 {
+      margin: 0 0 10px;
+      padding-left: 10px;
+      border-left: 5px solid var(--blue);
+      font-size: 18px;
+      color: #173766;
+    }
+
+    .section h4 {
+      margin: 16px 0 8px;
+      font-size: 15px;
+      color: #20456f;
+    }
+
+    ol {
+      margin: 8px 0 0 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+    }
+
+    code {
+      background: #eef5ff;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .summary div {
+      background: linear-gradient(180deg, #f4f9ff, #ffffff);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      min-height: 80px;
+    }
+
+    .summary strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1d4475;
+    }
+
+    .footer-note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>Python 第一章作业答案与知识补充</h1>
+    <p>作业答案、逐题解析、核心知识速记，一份就能直接交和顺手复习。</p>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>标准答案</h2>
+      <div class="answers">
+        <div>1. D</div><div>2. B</div><div>3. B</div>
+        <div>4. B</div><div>5. A</div><div>6. B</div>
+        <div>7. B</div><div>8. B</div><div>9. B</div>
+        <div>10. D</div><div>11. D</div><div>12. B</div>
+        <div>13. C</div><div>14. A</div><div>15. C</div>
+        <div>16. D</div><div>17. C</div><div>18. B</div>
+        <div>19. B</div><div>20. A</div><div>21. A</div>
+        <div>22. B</div><div>23. B</div><div>24. B</div>
+        <div>25. B</div><div>26. B</div><div>27. B</div>
+        <div>28. B</div><div>29. C</div><div>30. B</div>
+        <div>31. B</div><div>32. C</div><div>33. C</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>复习提醒</h2>
+      <div class="tip blue">变量命名不能数字开头，也不能和关键字重名。</div>
+      <div class="tip green"><code>=</code> 是赋值，<code>==</code> 是比较，这是高频易错点。</div>
+      <div class="tip gold"><code>range()</code> 记住“包左不包右”，<code>(1,)</code> 才是单元素元组。</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3>逐题简析</h3>
+    <ol>
+      <li>机器语言不属于高级语言。</li>
+      <li>Python 是动态语言，不是静态语言。</li>
+      <li><code>_3_</code> 符合变量命名规则。</li>
+      <li><code>gender == "male"</code> 是比较，不是赋值。</li>
+      <li>Python 没有内置函数 <code>avg()</code>。</li>
+      <li><code>type(1)</code> 是 <code>&lt;class 'int'&gt;</code>。</li>
+      <li><code>True</code> 的类型是 <code>bool</code>。</li>
+      <li><code>"1"</code> 是字符串 <code>str</code>。</li>
+      <li><code>[1]</code> 是列表 <code>list</code>。</li>
+      <li><code>(1)</code> 只是整数加括号，不是元组。</li>
+      <li><code>(1,)</code> 才是元组。</li>
+      <li><code>{1}</code> 是集合 <code>set</code>。</li>
+      <li><code>{1:1, 2:2}</code> 是字典 <code>dict</code>。</li>
+      <li>f-string 会直接替换变量，所以选 A。</li>
+      <li>只替换了 <code>%s</code>，<code>{name}</code> 会原样输出，所以选 C。</li>
+      <li>依次为 104、98、303、33、33、2、1030301。</li>
+      <li>单利 220，复利约 324.34。</li>
+      <li>原始字符串不会把 <code>\n</code> 当换行，选 B。</li>
+      <li>普通字符串里 <code>\n</code> 会换行，<code>\\</code> 表示一个反斜杠，选 B。</li>
+      <li>百分号格式化后整句会被正常替换，选 A。</li>
+      <li><code>%3.1f%%</code> 会输出保留 1 位小数的百分数，选 A。</li>
+      <li>单行注释是 <code>#</code>。</li>
+      <li>多行说明常见写法是一对三引号。</li>
+      <li>程序三大基本结构是顺序、分支、循环，没有“逐步结构”。</li>
+      <li>正确语法要有冒号，也要有缩进，所以选 B。</li>
+      <li><code>50.46</code> 保留一位小数得到 <code>50.5</code>。</li>
+      <li><code>range(4)</code> 转列表是 <code>[0, 1, 2, 3]</code>。</li>
+      <li><code>range(2)</code> 转元组是 <code>(0, 1)</code>。</li>
+      <li><code>range(1, 2)</code> 只有一个元素，结果是 <code>(1, )</code>。</li>
+      <li>五个值分别是 5、5、5、3、3。</li>
+      <li><code>range(4, 100, 2)</code> 共 48 个数，和为 2448。</li>
+      <li>这是自评题；按完成作业填写，通常选 C。</li>
+      <li><code>range(100)</code> 循环 100 次，<code>end=''</code> 保证在同一行连续输出。</li>
+    </ol>
+  </section>
+
+  <section class="section">
+    <h3>知识补充</h3>
+
+    <h4>1. 高级语言和机器语言</h4>
+    <ul>
+      <li>高级语言更接近人的思维，代码更容易写和维护，比如 Python、Java、C。</li>
+      <li>机器语言直接面向硬件执行，可读性很差。</li>
+    </ul>
+
+    <h4>2. 静态语言与动态语言</h4>
+    <ul>
+      <li>静态语言：变量类型通常在编译阶段更明确，如 Java、C、C++。</li>
+      <li>动态语言：变量类型可以在运行中变化，Python 是典型代表。</li>
+    </ul>
+
+    <h4>3. Python 变量命名规则</h4>
+    <ul>
+      <li>只能由字母、数字、下划线组成。</li>
+      <li>不能以数字开头。</li>
+      <li>不能使用关键字，如 <code>for</code>、<code>if</code>、<code>in</code>。</li>
+      <li>推荐使用见名知意的命名，如 <code>student_name</code>。</li>
+    </ul>
+
+    <h4>4. 常见数据类型速认</h4>
+    <ul>
+      <li><code>1</code> 是 <code>int</code></li>
+      <li><code>1.0</code> 是 <code>float</code></li>
+      <li><code>"1"</code> 是 <code>str</code></li>
+      <li><code>True</code> 是 <code>bool</code></li>
+      <li><code>[1]</code> 是 <code>list</code></li>
+      <li><code>(1,)</code> 是 <code>tuple</code></li>
+      <li><code>{1}</code> 是 <code>set</code></li>
+      <li><code>{1: 1}</code> 是 <code>dict</code></li>
+    </ul>
+
+    <h4>5. 三种字符串格式化方式</h4>
+    <ul>
+      <li>f-string：<code>f"姓名是{name}"</code></li>
+      <li>百分号格式化：<code>"姓名是%s" % name</code></li>
+      <li><code>format()</code>：<code>"姓名是{}".format(name)</code></li>
+    </ul>
+
+    <h4>6. range() 核心规律</h4>
+    <ul>
+      <li><code>range(4)</code> -> 0, 1, 2, 3</li>
+      <li><code>range(2, 6)</code> -> 2, 3, 4, 5</li>
+      <li><code>range(1, 10, 2)</code> -> 1, 3, 5, 7, 9</li>
+    </ul>
+    <p>记忆口诀：包左不包右，步长默认 1。</p>
+
+    <h4>7. len()、sum() 和 for 循环</h4>
+    <ul>
+      <li><code>len()</code> 用来统计元素个数。</li>
+      <li><code>sum()</code> 用来求数值总和。</li>
+      <li><code>for</code> 循环最常见的三类基础题：计数、遍历、求和。</li>
+    </ul>
+
+    <h4>8. 初学者最容易错的地方</h4>
+    <ul>
+      <li>把 <code>=</code> 和 <code>==</code> 混淆。</li>
+      <li>把 <code>(1)</code> 误认成元组。</li>
+      <li>忘记缩进。</li>
+      <li>忘记 <code>range()</code> 右边取不到。</li>
+      <li>把字符串 <code>"1"</code> 当成整数 <code>1</code>。</li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <h3>5 个速记要点</h3>
+    <div class="summary">
+      <div><strong>1</strong>看懂变量和类型。</div>
+      <div><strong>2</strong>分清赋值和比较。</div>
+      <div><strong>3</strong>掌握字符串格式化。</div>
+      <div><strong>4</strong>看懂分支和循环语法。</div>
+      <div><strong>5</strong>会用 <code>range()</code>、<code>len()</code>、<code>sum()</code>。</div>
+    </div>
+    <p class="footer-note">这 5 点掌握住，后面学习列表、函数、文件和面向对象会轻松很多。</p>
+  </section>
+</body>
+</html>
