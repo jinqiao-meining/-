@@ -15,6 +15,7 @@ let backendAvailable = false;
 let currentUploads = [];
 let currentChart = null;
 let currentAnalysisPayload = null;
+let currentRegressionChart = null;
 
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
@@ -119,6 +120,35 @@ function drawChart(chartSuggestion) {
   });
 }
 
+function drawRegressionChart(chartSuggestion) {
+  const canvas = document.getElementById("regression-chart");
+  if (!canvas || !window.Chart) return;
+  const ctx = canvas.getContext("2d");
+  if (currentRegressionChart) currentRegressionChart.destroy();
+  if (!chartSuggestion || !chartSuggestion.labels?.length) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+  currentRegressionChart = new Chart(ctx, {
+    type: chartSuggestion.type || "bar",
+    data: {
+      labels: chartSuggestion.labels,
+      datasets: [{
+        label: chartSuggestion.title,
+        data: chartSuggestion.values,
+        backgroundColor: chartSuggestion.values.map(value => value >= 0 ? "#2d72ff" : "#c94f3d"),
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: chartSuggestion.title, color: "#14263b", font: { size: 16 } } },
+      scales: { x: { ticks: { color: "#55677a" } }, y: { ticks: { color: "#55677a" } } }
+    }
+  });
+}
+
 function renderInterpretationDraft(lines) {
   const root = document.getElementById("interpretation-result");
   if (!lines || !lines.length) {
@@ -192,6 +222,55 @@ function renderVariableRolePanel(payload) {
     });
     await analyzeUpload(payload.file.id);
   });
+}
+
+function renderRegressionInterpretation(lines) {
+  const root = document.getElementById("regression-interpretation");
+  if (!lines || !lines.length) {
+    root.innerHTML = `<strong>回归解释草稿</strong><p style="margin:8px 0 0; color:var(--muted);">回归完成后，这里会生成一段适合继续打磨成论文文字的说明。</p>`;
+    return;
+  }
+  root.innerHTML = `<strong>回归解释草稿</strong><ul>${lines.map(item => `<li>${item}</li>`).join("")}</ul>`;
+}
+
+function renderRegressionResult(payload) {
+  const root = document.getElementById("regression-result");
+  if (!payload || !payload.regression) {
+    root.innerHTML = `<strong>尚未运行回归</strong><p style="margin:8px 0 0; color:var(--muted);">请先完成一次文件分析并设定变量角色。</p>`;
+    drawRegressionChart(null);
+    renderRegressionInterpretation(null);
+    return;
+  }
+
+  const { file, regression } = payload;
+  if (!regression.supported) {
+    root.innerHTML = `<strong>${file?.name || "回归结果"}</strong><p style="margin:8px 0 0; color:var(--muted);">${regression.message}</p>`;
+    drawRegressionChart(null);
+    renderRegressionInterpretation(null);
+    return;
+  }
+
+  root.innerHTML = `
+    <strong>${file.name}</strong>
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <h4>模型概况</h4>
+        <p>因变量：${regression.dependentVar}</p>
+        <p>解释变量：${regression.regressors.join("、")}</p>
+        <p>样本量 N：${regression.sampleSize} | R²：${regression.rSquared}</p>
+      </div>
+      <div class="analysis-card">
+        <h4>系数结果</h4>
+        <table class="analysis-table">
+          <thead><tr><th>变量</th><th>系数</th></tr></thead>
+          <tbody>${regression.coefficients.map(item => `<tr><td>${item.variable}</td><td>${item.coefficient}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  drawRegressionChart(regression.chartSuggestion || null);
+  renderRegressionInterpretation(regression.interpretationDraft || []);
 }
 
 function renderAnalysisResult(payload) {
@@ -376,6 +455,7 @@ async function analyzeUpload(uploadId) {
   const res = await fetch(`${apiBase}/api/uploads/${uploadId}/analyze`);
   const data = await res.json();
   renderAnalysisResult(data);
+  renderRegressionResult(null);
 }
 
 function bindAnalysisButton() {
@@ -413,6 +493,31 @@ function bindExportButton() {
   });
 }
 
+async function runRegression(uploadId) {
+  if (!backendAvailable) {
+    renderRegressionResult({ file: { name: "本地模式" }, regression: { supported: false, message: "请先启动本地后端，再使用基础回归功能。" } });
+    return;
+  }
+  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/regression`);
+  const data = await res.json();
+  renderRegressionResult(data);
+}
+
+function bindRegressionButton() {
+  document.getElementById("run-regression").addEventListener("click", async () => {
+    if (!currentUploads.length) {
+      renderRegressionResult({ file: { name: "暂无文件" }, regression: { supported: false, message: "请先上传或登记一个 CSV/Excel 文件。" } });
+      return;
+    }
+    const latest = currentUploads[0];
+    if (!latest.id) {
+      renderRegressionResult({ file: { name: latest.name || "本地文件" }, regression: { supported: false, message: "浏览器本地模式下暂不支持回归，请启动本地后端。" } });
+      return;
+    }
+    await runRegression(latest.id);
+  });
+}
+
 window.analyzeUpload = analyzeUpload;
 
 async function init() {
@@ -424,6 +529,7 @@ async function init() {
   bindIntegrity();
   bindAnalysisButton();
   bindExportButton();
+  bindRegressionButton();
 }
 
 init();

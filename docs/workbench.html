@@ -13,8 +13,8 @@
         <p class="eyebrow eyebrow--dark">LOCAL-FIRST RESEARCH WORKBENCH</p>
         <h1 style="font-size:clamp(34px,5vw,62px); color:var(--ink);">经济学研究工作台</h1>
         <p style="margin:12px 0 0; color:var(--muted); max-width:760px;">
-          第三版已支持本地后端、SQLite 数据库、文件上传登记、研究日志和诚信审阅接口。
-          若未启动后端，页面会自动回退到浏览器本地模式，保证使用不中断。
+          第六版已支持本地后端、变量角色设定、描述统计导出、基础回归原型与诚信审阅流程。
+          若未启动后端，页面会自动回退到浏览器本地模式，保证研究记录不中断。
         </p>
         <div class="archive-meta" style="margin-top:12px;">
           <span id="backend-status">正在检测本地后端</span>
@@ -129,6 +129,23 @@
           <div id="interpretation-result" class="integrity-output">
             <strong>结果解释草稿</strong>
             <p style="margin:8px 0 0; color:var(--muted);">分析完成后，这里会生成一份面向论文写作的解释草稿。</p>
+          </div>
+        </article>
+
+        <article class="workspace-panel">
+          <h2>基础回归原型</h2>
+          <p>在完成变量角色设定后，可直接运行一次基础 OLS 原型，用于快速查看系数方向、样本量与拟合度。</p>
+          <div class="panel-actions">
+            <button class="button button--primary" id="run-regression" type="button">运行基础回归</button>
+          </div>
+          <div id="regression-result" class="integrity-output">
+            <strong>尚未运行回归</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">请先完成一次文件分析并设定变量角色。</p>
+          </div>
+          <canvas id="regression-chart" height="180" style="margin-top:14px; width:100%; background:#fff; border-radius:16px; border:1px solid #d8e5f0;"></canvas>
+          <div id="regression-interpretation" class="integrity-output">
+            <strong>回归解释草稿</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">回归完成后，这里会生成一段适合继续打磨成论文文字的说明。</p>
           </div>
         </article>
 

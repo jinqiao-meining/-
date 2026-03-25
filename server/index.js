@@ -7,6 +7,7 @@ const db = require("./db");
 const { methodPlaybooks, getAnalysisPlan } = require("./playbooks");
 const { reviewText } = require("./integrity");
 const { analyzeFile } = require("./analyze");
+const { runRegression } = require("./regression");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -244,6 +245,30 @@ app.post("/api/uploads/:id/roles", (req, res) => {
 
   res.json({
     roles: serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id))
+  });
+});
+
+app.get("/api/uploads/:id/regression", (req, res) => {
+  const uploadItem = getUploadStmt.get(req.params.id);
+  if (!uploadItem) {
+    return res.status(404).json({ error: "未找到对应文件。" });
+  }
+
+  const fullPath = path.join(uploadDir, uploadItem.stored_name);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: "文件已不存在。" });
+  }
+
+  const role = serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id));
+  const regression = runRegression(fullPath, role);
+  res.json({
+    file: {
+      id: uploadItem.id,
+      name: uploadItem.original_name,
+      storedName: uploadItem.stored_name
+    },
+    regression,
+    roles: role
   });
 });
 
