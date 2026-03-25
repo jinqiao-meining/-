@@ -16,6 +16,7 @@ let currentUploads = [];
 let currentChart = null;
 let currentAnalysisPayload = null;
 let currentRegressionChart = null;
+let currentRegressionPayload = null;
 
 function readStore(key, fallback) {
   const value = localStorage.getItem(key);
@@ -234,6 +235,7 @@ function renderRegressionInterpretation(lines) {
 }
 
 function renderRegressionResult(payload) {
+  currentRegressionPayload = payload;
   const root = document.getElementById("regression-result");
   if (!payload || !payload.regression) {
     root.innerHTML = `<strong>尚未运行回归</strong><p style="margin:8px 0 0; color:var(--muted);">请先完成一次文件分析并设定变量角色。</p>`;
@@ -257,20 +259,33 @@ function renderRegressionResult(payload) {
         <h4>模型概况</h4>
         <p>因变量：${regression.dependentVar}</p>
         <p>解释变量：${regression.regressors.join("、")}</p>
-        <p>样本量 N：${regression.sampleSize} | R²：${regression.rSquared}</p>
+        <p>样本量 N：${regression.sampleSize} | R²：${regression.rSquared} | Adjusted R²：${regression.adjustedRSquared ?? "NA"}</p>
       </div>
       <div class="analysis-card">
         <h4>系数结果</h4>
         <table class="analysis-table">
-          <thead><tr><th>变量</th><th>系数</th></tr></thead>
-          <tbody>${regression.coefficients.map(item => `<tr><td>${item.variable}</td><td>${item.coefficient}</td></tr>`).join("")}</tbody>
+          <thead><tr><th>变量</th><th>系数</th><th>标准误</th><th>t 值</th><th>p 值</th></tr></thead>
+          <tbody>${regression.coefficients.map(item => `<tr><td>${item.variable} ${item.stars || ""}</td><td>${item.coefficient}</td><td>${item.stdError}</td><td>${item.tStat}</td><td>${item.pValue}</td></tr>`).join("")}</tbody>
         </table>
+      </div>
+      <div class="analysis-card">
+        <h4>规格对照</h4>
+        ${regression.suiteResults?.length ? `
+          <table class="analysis-table">
+            <thead><tr><th>规格</th><th>N</th><th>R²</th><th>Adjusted R²</th></tr></thead>
+            <tbody>${regression.suiteResults.map(item => `<tr><td>${item.label}</td><td>${item.sampleSize}</td><td>${item.rSquared}</td><td>${item.adjustedRSquared ?? "NA"}</td></tr>`).join("")}</tbody>
+          </table>` : `<p style="color:var(--muted);">当前仅有单一规格。</p>`}
       </div>
     </div>
   `;
 
   drawRegressionChart(regression.chartSuggestion || null);
   renderRegressionInterpretation(regression.interpretationDraft || []);
+}
+
+function renderReportStatus(message, title = "研究备忘录") {
+  const root = document.getElementById("report-status");
+  root.innerHTML = `<strong>${title}</strong><p style="margin:8px 0 0; color:var(--muted);">${message}</p>`;
 }
 
 function renderAnalysisResult(payload) {
@@ -456,6 +471,7 @@ async function analyzeUpload(uploadId) {
   const data = await res.json();
   renderAnalysisResult(data);
   renderRegressionResult(null);
+  renderReportStatus("请先运行回归或直接导出研究备忘录。");
 }
 
 function bindAnalysisButton() {
@@ -501,6 +517,7 @@ async function runRegression(uploadId) {
   const res = await fetch(`${apiBase}/api/uploads/${uploadId}/regression`);
   const data = await res.json();
   renderRegressionResult(data);
+  renderReportStatus("已准备好导出研究备忘录。备忘录将整合项目设置、描述统计、回归结果与研究日志。");
 }
 
 function bindRegressionButton() {
@@ -518,6 +535,43 @@ function bindRegressionButton() {
   });
 }
 
+async function exportResearchReport(uploadId) {
+  if (!backendAvailable) {
+    renderReportStatus("请先启动本地后端，再导出研究备忘录。");
+    return;
+  }
+  const res = await fetch(`${apiBase}/api/uploads/${uploadId}/research-report`);
+  const data = await res.json();
+  const markdown = data.report?.markdown;
+  if (!markdown) {
+    renderReportStatus("研究备忘录导出失败，请稍后重试。");
+    return;
+  }
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "research_memo_v7.md";
+  a.click();
+  URL.revokeObjectURL(url);
+  renderReportStatus("研究备忘录已导出，可继续整理为论文提纲或项目汇报。");
+}
+
+function bindReportButton() {
+  document.getElementById("export-report").addEventListener("click", async () => {
+    if (!currentUploads.length) {
+      renderReportStatus("请先上传或登记一个 CSV/Excel 文件。");
+      return;
+    }
+    const latest = currentUploads[0];
+    if (!latest.id) {
+      renderReportStatus("浏览器本地模式下暂不支持备忘录导出，请启动本地后端。");
+      return;
+    }
+    await exportResearchReport(latest.id);
+  });
+}
+
 window.analyzeUpload = analyzeUpload;
 
 async function init() {
@@ -530,6 +584,8 @@ async function init() {
   bindAnalysisButton();
   bindExportButton();
   bindRegressionButton();
+  bindReportButton();
+  renderReportStatus("导出后可获得一份 Markdown 格式的研究备忘录，便于继续整理为论文提纲。");
 }
 
 init();

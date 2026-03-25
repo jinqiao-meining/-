@@ -13,7 +13,7 @@
         <p class="eyebrow eyebrow--dark">LOCAL-FIRST RESEARCH WORKBENCH</p>
         <h1 style="font-size:clamp(34px,5vw,62px); color:var(--ink);">经济学研究工作台</h1>
         <p style="margin:12px 0 0; color:var(--muted); max-width:760px;">
-          第六版已支持本地后端、变量角色设定、描述统计导出、基础回归原型与诚信审阅流程。
+          第七版已支持本地后端、描述统计、带推断信息的 OLS 原型、规格对照和研究备忘录导出。
           若未启动后端，页面会自动回退到浏览器本地模式，保证研究记录不中断。
         </p>
         <div class="archive-meta" style="margin-top:12px;">
@@ -134,9 +134,10 @@
 
         <article class="workspace-panel">
           <h2>基础回归原型</h2>
-          <p>在完成变量角色设定后，可直接运行一次基础 OLS 原型，用于快速查看系数方向、样本量与拟合度。</p>
+          <p>在完成变量角色设定后，可直接运行一次基础 OLS 原型，用于查看系数、标准误、t 值、p 值与规格对照。</p>
           <div class="panel-actions">
             <button class="button button--primary" id="run-regression" type="button">运行基础回归</button>
+            <button class="button button--secondary" id="export-report" type="button">导出研究备忘录</button>
           </div>
           <div id="regression-result" class="integrity-output">
             <strong>尚未运行回归</strong>
@@ -146,6 +147,10 @@
           <div id="regression-interpretation" class="integrity-output">
             <strong>回归解释草稿</strong>
             <p style="margin:8px 0 0; color:var(--muted);">回归完成后，这里会生成一段适合继续打磨成论文文字的说明。</p>
+          </div>
+          <div id="report-status" class="integrity-output">
+            <strong>研究备忘录</strong>
+            <p style="margin:8px 0 0; color:var(--muted);">导出后可获得一份 Markdown 格式的研究备忘录，便于继续整理为论文提纲。</p>
           </div>
         </article>
 

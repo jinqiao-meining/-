@@ -272,6 +272,104 @@ app.get("/api/uploads/:id/regression", (req, res) => {
   });
 });
 
+app.get("/api/uploads/:id/research-report", (req, res) => {
+  const uploadItem = getUploadStmt.get(req.params.id);
+  if (!uploadItem) {
+    return res.status(404).json({ error: "未找到对应文件。" });
+  }
+
+  const project = serializeProject(getProjectByIdStmt.get(uploadItem.project_id));
+  const role = serializeRole(getRoleStmt.get(uploadItem.project_id, uploadItem.id));
+  const fullPath = path.join(uploadDir, uploadItem.stored_name);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: "文件已不存在。" });
+  }
+
+  const analysis = analyzeFile(fullPath, role);
+  const regression = runRegression(fullPath, role);
+  const logs = listLogsStmt.all(uploadItem.project_id).slice(0, 5).map(item => ({
+    content: item.content,
+    createdAt: item.created_at
+  }));
+
+  const reportLines = [
+    `# ${project?.title || "经济学研究项目"} 研究备忘录`,
+    "",
+    "## 一、项目概况",
+    `- 研究问题：${project?.question || "未填写"}`,
+    `- 样本范围：${project?.sample || "未填写"}`,
+    `- 方法选择：${project?.method || "未填写"}`,
+    `- 当前阶段：${project?.stage || "未填写"}`,
+    "",
+    "## 二、数据摘要"
+  ];
+
+  if (analysis.supported) {
+    reportLines.push(`- 数据文件：${uploadItem.original_name}`);
+    reportLines.push(`- 工作表：${analysis.sheetName}`);
+    reportLines.push(`- 样本量：${analysis.rowCount}`);
+    reportLines.push(`- 字段数：${analysis.columns.length}`);
+    reportLines.push("");
+    reportLines.push("### 描述统计要点");
+    (analysis.interpretationDraft || []).forEach(line => reportLines.push(`- ${line}`));
+  } else {
+    reportLines.push(`- 数据摘要暂不可用：${analysis.message}`);
+  }
+
+  reportLines.push("");
+  reportLines.push("## 三、回归结果摘要");
+  if (regression.supported) {
+    reportLines.push(`- 因变量：${regression.dependentVar}`);
+    reportLines.push(`- 解释变量：${regression.regressors.join("、")}`);
+    reportLines.push(`- 样本量 N：${regression.sampleSize}`);
+    reportLines.push(`- R²：${regression.rSquared}`);
+    reportLines.push(`- Adjusted R²：${regression.adjustedRSquared ?? "NA"}`);
+    reportLines.push("");
+    reportLines.push("| 变量 | 系数 | 标准误 | t 值 | p 值 |");
+    reportLines.push("| --- | ---: | ---: | ---: | ---: |");
+    regression.coefficients.forEach(item => {
+      reportLines.push(`| ${item.variable} ${item.stars} | ${item.coefficient} | ${item.stdError} | ${item.tStat} | ${item.pValue} |`);
+    });
+    reportLines.push("");
+    reportLines.push("### 回归解释");
+    (regression.interpretationDraft || []).forEach(line => reportLines.push(`- ${line}`));
+    if (regression.suiteResults?.length) {
+      reportLines.push("");
+      reportLines.push("### 规格对照");
+      regression.suiteResults.forEach(item => {
+        reportLines.push(`- ${item.label}：N=${item.sampleSize}，R²=${item.rSquared}，Adjusted R²=${item.adjustedRSquared ?? "NA"}`);
+      });
+    }
+  } else {
+    reportLines.push(`- 回归结果暂不可用：${regression.message}`);
+  }
+
+  reportLines.push("");
+  reportLines.push("## 四、最近研究日志");
+  if (logs.length) {
+    logs.forEach(item => reportLines.push(`- [${item.createdAt}] ${item.content}`));
+  } else {
+    reportLines.push("- 暂无研究日志。");
+  }
+
+  reportLines.push("");
+  reportLines.push("## 五、后续建议");
+  reportLines.push("- 在正式论文版本中补充稳健标准误、固定效应和内生性识别。");
+  reportLines.push("- 对核心变量做替代定义、样本修剪和异质性分析。");
+  reportLines.push("- 将本备忘录与图表、回归表、文献综述一起整理到完整研究档案。");
+
+  res.json({
+    file: {
+      id: uploadItem.id,
+      name: uploadItem.original_name
+    },
+    report: {
+      title: `${project?.title || "经济学研究项目"} 研究备忘录`,
+      markdown: reportLines.join("\n")
+    }
+  });
+});
+
 app.post("/api/logs", (req, res) => {
   const current = getProjectStmt.get();
   if (!current) {

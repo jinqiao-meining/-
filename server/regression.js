@@ -88,7 +88,32 @@ function mean(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function buildInterpretation({ dependentVar, regressors, coefficients, sampleSize, rSquared }) {
+function normalCdf(value) {
+  const sign = value < 0 ? -1 : 1;
+  const abs = Math.abs(value) / Math.sqrt(2);
+  const t = 1 / (1 + 0.3275911 * abs);
+  const a1 = 0.254829592;
+  const a2 = -0.284496736;
+  const a3 = 1.421413741;
+  const a4 = -1.453152027;
+  const a5 = 1.061405429;
+  const erf = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-abs * abs);
+  return 0.5 * (1 + sign * erf);
+}
+
+function pValueFromT(tStat) {
+  const probability = 2 * (1 - normalCdf(Math.abs(tStat)));
+  return Math.max(0, Math.min(1, probability));
+}
+
+function significanceStars(pValue) {
+  if (pValue < 0.01) return "***";
+  if (pValue < 0.05) return "**";
+  if (pValue < 0.1) return "*";
+  return "";
+}
+
+function buildInterpretation({ dependentVar, regressors, coefficients, sampleSize, rSquared, suiteResults }) {
   const lines = [
     `本次基础回归共纳入 ${sampleSize} 个有效样本，因变量为 ${dependentVar}。`,
     `模型包含的解释变量为：${regressors.join("、")}。`,
@@ -99,11 +124,80 @@ function buildInterpretation({ dependentVar, regressors, coefficients, sampleSiz
   if (slopeTerms.length) {
     const lead = slopeTerms[0];
     const direction = lead.coefficient >= 0 ? "正向" : "负向";
-    lines.push(`在其他变量保持不变的线性框架下，${lead.variable} 与 ${dependentVar} 呈${direction}关联，系数约为 ${lead.coefficient}。`);
+    const significance = lead.stars ? `，并在当前近似检验下呈现 ${lead.stars} 水平` : "";
+    lines.push(`在其他变量保持不变的线性框架下，${lead.variable} 与 ${dependentVar} 呈${direction}关联，系数约为 ${lead.coefficient}${significance}。`);
   }
 
-  lines.push("该结果仅作为第六版原型中的基础 OLS 演示，正式研究仍应进一步补充显著性检验、稳健标准误、固定效应或内生性处理。");
+  if (suiteResults?.length > 1) {
+    const baseline = suiteResults[0];
+    const compare = suiteResults[1];
+    const baseLead = baseline.coefficients.find(item => item.variable === regressors[0]);
+    const compareLead = compare.coefficients.find(item => item.variable === regressors[0]);
+    if (baseLead && compareLead) {
+      lines.push(`在稳健性对照中，${regressors[0]} 的系数由 ${baseline.label} 下的 ${baseLead.coefficient} 变为 ${compare.label} 下的 ${compareLead.coefficient}，可用于初步比较控制变量纳入前后的变化。`);
+    }
+  }
+
+  lines.push("该结果仍属于平台第七版中的基础 OLS 演示，正式研究建议继续补充稳健标准误、固定效应、内生性识别和更完整的稳健性检验。");
   return lines;
+}
+
+function runSpecification(rows, dependentVar, regressors, label) {
+  const usableRows = rows.filter(row =>
+    [dependentVar, ...regressors].every(column => isNumericValue(row[column]))
+  );
+  const minSample = regressors.length + 2;
+  if (usableRows.length < minSample) {
+    throw new Error(`规格“${label}”有效样本不足。当前仅有 ${usableRows.length} 行完整观测，至少需要 ${minSample} 行。`);
+  }
+
+  const y = usableRows.map(row => toNumber(row[dependentVar]));
+  const x = usableRows.map(row => [1, ...regressors.map(column => toNumber(row[column]))]);
+  try {
+    const xt = transpose(x);
+    const xtx = multiplyMatrices(xt, x);
+    const xtxInv = invertMatrix(xtx);
+    const xty = multiplyMatrixVector(xt, y);
+    const beta = multiplyMatrixVector(xtxInv, xty).map(value => Number(value.toFixed(6)));
+    const fitted = x.map(row => row.reduce((sum, value, index) => sum + value * beta[index], 0));
+    const yMean = mean(y);
+    const sse = y.reduce((sum, value, index) => sum + (value - fitted[index]) ** 2, 0);
+    const sst = y.reduce((sum, value) => sum + (value - yMean) ** 2, 0);
+    const rSquared = sst === 0 ? 1 : 1 - sse / sst;
+    const degreesOfFreedom = usableRows.length - x[0].length;
+    const sigmaSquared = degreesOfFreedom > 0 ? sse / degreesOfFreedom : 0;
+    const varianceBeta = xtxInv.map(row => row.map(value => value * sigmaSquared));
+
+    const coefficients = ["Intercept", ...regressors].map((variable, index) => ({
+      variable,
+      coefficient: beta[index],
+      stdError: Number(Math.sqrt(Math.max(varianceBeta[index][index], 0)).toFixed(6)),
+      tStat: 0,
+      pValue: 1,
+      stars: ""
+    }));
+
+    coefficients.forEach(item => {
+      item.tStat = item.stdError ? Number((item.coefficient / item.stdError).toFixed(4)) : 0;
+      item.pValue = Number(pValueFromT(item.tStat).toFixed(4));
+      item.stars = significanceStars(item.pValue);
+    });
+
+    return {
+      label,
+      dependentVar,
+      regressors,
+      sampleSize: usableRows.length,
+      degreesOfFreedom,
+      rSquared: Number(rSquared.toFixed(4)),
+      adjustedRSquared: degreesOfFreedom > 0 && usableRows.length > 1
+        ? Number((1 - (1 - rSquared) * ((usableRows.length - 1) / degreesOfFreedom)).toFixed(4))
+        : null,
+      coefficients
+    };
+  } catch (error) {
+    throw new Error(error.message || `规格“${label}”回归计算失败。`);
+  }
 }
 
 function runRegression(filePath, roles = null) {
@@ -122,7 +216,9 @@ function runRegression(filePath, roles = null) {
     };
   }
 
-  const regressors = [...new Set([...(roles.independentVars || []), ...(roles.controlVars || [])].filter(Boolean))];
+  const coreRegressors = [...new Set([...(roles.independentVars || [])].filter(Boolean))];
+  const controlRegressors = [...new Set([...(roles.controlVars || [])].filter(Boolean))];
+  const regressors = [...new Set([...coreRegressors, ...controlRegressors])];
   if (!regressors.length) {
     return {
       supported: false,
@@ -131,58 +227,37 @@ function runRegression(filePath, roles = null) {
   }
 
   const parsed = parseWorkbook(filePath);
-  const usableRows = parsed.rows.filter(row =>
-    [roles.dependentVar, ...regressors].every(column => isNumericValue(row[column]))
-  );
-
-  const minSample = regressors.length + 2;
-  if (usableRows.length < minSample) {
-    return {
-      supported: false,
-      message: `有效样本不足。当前仅有 ${usableRows.length} 行完整观测，至少需要 ${minSample} 行。`
-    };
-  }
-
-  const y = usableRows.map(row => toNumber(row[roles.dependentVar]));
-  const x = usableRows.map(row => [1, ...regressors.map(column => toNumber(row[column]))]);
-
   try {
-    const xt = transpose(x);
-    const xtx = multiplyMatrices(xt, x);
-    const xtxInv = invertMatrix(xtx);
-    const xty = multiplyMatrixVector(xt, y);
-    const beta = multiplyMatrixVector(xtxInv, xty).map(value => Number(value.toFixed(6)));
-    const fitted = x.map(row => row.reduce((sum, value, index) => sum + value * beta[index], 0));
-    const yMean = mean(y);
-    const sse = y.reduce((sum, value, index) => sum + (value - fitted[index]) ** 2, 0);
-    const sst = y.reduce((sum, value) => sum + (value - yMean) ** 2, 0);
-    const rSquared = sst === 0 ? 1 : 1 - sse / sst;
-
-    const coefficients = ["Intercept", ...regressors].map((variable, index) => ({
-      variable,
-      coefficient: beta[index]
-    }));
+    const baseline = runSpecification(parsed.rows, roles.dependentVar, regressors, "基准规格");
+    const suiteResults = [baseline];
+    if (coreRegressors.length && controlRegressors.length) {
+      suiteResults.push(runSpecification(parsed.rows, roles.dependentVar, coreRegressors, "不含控制变量"));
+    }
 
     return {
       supported: true,
       sheetName: parsed.sheetName,
       dependentVar: roles.dependentVar,
       regressors,
-      sampleSize: usableRows.length,
-      rSquared: Number(rSquared.toFixed(4)),
-      coefficients,
+      sampleSize: baseline.sampleSize,
+      degreesOfFreedom: baseline.degreesOfFreedom,
+      rSquared: baseline.rSquared,
+      adjustedRSquared: baseline.adjustedRSquared,
+      coefficients: baseline.coefficients,
+      suiteResults,
       chartSuggestion: {
         type: "bar",
         title: "回归系数示意图",
-        labels: coefficients.filter(item => item.variable !== "Intercept").map(item => item.variable),
-        values: coefficients.filter(item => item.variable !== "Intercept").map(item => item.coefficient)
+        labels: baseline.coefficients.filter(item => item.variable !== "Intercept").map(item => item.variable),
+        values: baseline.coefficients.filter(item => item.variable !== "Intercept").map(item => item.coefficient)
       },
       interpretationDraft: buildInterpretation({
         dependentVar: roles.dependentVar,
         regressors,
-        coefficients,
-        sampleSize: usableRows.length,
-        rSquared: Number(rSquared.toFixed(4))
+        coefficients: baseline.coefficients,
+        sampleSize: baseline.sampleSize,
+        rSquared: baseline.rSquared,
+        suiteResults
       })
     };
   } catch (error) {
